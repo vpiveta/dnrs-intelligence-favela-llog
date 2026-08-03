@@ -8,7 +8,7 @@
     <h1>Sala de Guerra</h1>
     <p>Prioridades, crescimento, risco e recomendações para orientar a ação do gerente.</p>
   </div>
-  <form class="quick-filters advanced-filters unified-filter-bar" method="get">
+  <form class="quick-filters enterprise-filter-bar" method="get">
     {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
     <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('warroom.index') }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega e somente semanas/anos existentes no banco.</small>

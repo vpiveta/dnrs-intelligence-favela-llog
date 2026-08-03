@@ -275,3 +275,36 @@ td small.muted{display:block;margin-top:.25rem}
 .heading-actions .unified-filter-bar{min-width:min(760px,70vw)}
 @media(max-width:1100px){.unified-filter-bar{grid-template-columns:repeat(2,minmax(150px,1fr))}.heading-actions{width:100%;align-items:stretch}.heading-actions .unified-filter-bar{min-width:0}}
 @media(max-width:640px){.unified-filter-bar{grid-template-columns:1fr}.unified-filter-bar .filter-field.wide{grid-column:auto}}
+
+
+/* Enterprise 2.0 Final — polimento definitivo dos filtros e GEO */
+.command-heading{display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);align-items:start;gap:24px}
+.command-heading>.heading-actions{display:flex;align-items:flex-start;gap:12px;width:100%}
+.enterprise-filter-bar{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px!important;align-items:end;width:100%;min-width:0;padding:16px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,rgba(20,31,49,.96),rgba(13,21,35,.96));box-shadow:0 12px 35px rgba(0,0,0,.16)}
+.enterprise-filter-bar .filter-field{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0!important}
+.enterprise-filter-bar .filter-field.wide{grid-column:span 2}
+.enterprise-filter-bar .filter-field>span{font-size:11px;font-weight:700;color:#9fb0c8;letter-spacing:.02em}
+.enterprise-filter-bar input,.enterprise-filter-bar select{display:block;width:100%!important;min-width:0!important;height:44px!important;margin:0!important;padding:10px 12px!important;border:1px solid #2b3a54!important;border-radius:11px!important;background:#0d1523!important;color:#eef3fb!important;color-scheme:dark;outline:none;font:inherit}
+.enterprise-filter-bar input[type=date]{padding-right:8px!important}
+.enterprise-filter-bar input:focus,.enterprise-filter-bar select:focus{border-color:var(--blue)!important;box-shadow:0 0 0 3px rgba(79,124,255,.14)}
+.enterprise-filter-bar .btn{height:44px;display:inline-flex;align-items:center;justify-content:center;width:100%;white-space:nowrap}
+.enterprise-filter-bar .filter-help{grid-column:1/-1;display:block;padding:9px 11px;border-radius:10px;background:rgba(79,124,255,.07);color:#9fb0c8;font-size:11px;line-height:1.45}
+.enterprise-filter-cases{grid-template-columns:repeat(8,minmax(0,1fr))}
+.enterprise-filter-cases .filter-field.wide{grid-column:span 2}
+.enterprise-filter-geo{grid-template-columns:repeat(8,minmax(0,1fr))}
+.enterprise-filter-geo .filter-field.wide{grid-column:span 2}
+.geo-toolbar{overflow:visible}
+.geo-toolbar-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
+.geo-toolbar-head .btn{flex:0 0 auto}
+.geo-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
+.geo-status-card{padding:14px 16px;border:1px solid #2b3a55;border-radius:14px;background:#101a2a}
+.geo-status-card span,.geo-status-card small{display:block;color:#8fa4c2;font-size:11px}
+.geo-status-card strong{display:block;font-size:24px;margin:5px 0}
+.geo-status-card.success strong{color:var(--green)}.geo-status-card.accent strong{color:#8aa6ff}.geo-status-card.warning strong{color:var(--amber)}
+.geo-progress-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:14px}
+.geo-progress{height:8px;margin:0!important}
+.geo-progress-text{white-space:nowrap}
+#geoMap{min-height:520px;position:relative;background:#0b1320}
+@media(max-width:1280px){.command-heading{grid-template-columns:1fr}.command-heading>.heading-actions{flex-wrap:wrap}.enterprise-filter-bar{grid-template-columns:repeat(4,minmax(0,1fr))}.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:820px){.enterprise-filter-bar,.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:repeat(2,minmax(0,1fr))}.enterprise-filter-bar .filter-field.wide,.enterprise-filter-cases .filter-field.wide,.enterprise-filter-geo .filter-field.wide{grid-column:1/-1}.geo-status-grid{grid-template-columns:1fr}.geo-progress-wrap{grid-template-columns:1fr}.geo-progress-text{white-space:normal}}
+@media(max-width:560px){.enterprise-filter-bar,.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:1fr}.enterprise-filter-bar>*{grid-column:1/-1!important}.geo-toolbar-head{flex-direction:column}.geo-toolbar-head .btn{width:100%}}

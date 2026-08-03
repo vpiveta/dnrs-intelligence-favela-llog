@@ -5,7 +5,7 @@
 <div class="page-heading command-heading">
   <div><span class="eyebrow">DNR Intelligence</span><h1>Central de Comando</h1><p>Olá, {{ current_user.nome.split()[0] }}. Veja o que precisa de atenção agora.</p></div>
   <div class="heading-actions">
-    <form class="quick-filters unified-filter-bar" method="get">
+    <form class="quick-filters enterprise-filter-bar" method="get">
       {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
       <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.index') }}">Limpar</a>
     </form>

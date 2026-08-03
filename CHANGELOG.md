@@ -69,3 +69,10 @@
 - Padronização responsiva dos filtros avançados.
 - Correção do modal de exclusão de lotes.
 - Campos de data, semana, ano, base e ações alinhados ao layout.
+
+
+## 2.0.0-final-ui
+- Filtros padronizados em Dashboard, Analytics, Casos, Sala de Guerra, Inteligência e GEO.
+- Remoção do filtro de Base duplicado no GEO.
+- Cards de status GEO e diagnóstico quando não existem pontos válidos.
+- Layout responsivo e campo de data no tema escuro.

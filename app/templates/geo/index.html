@@ -14,16 +14,31 @@
   <div class="kpi accent"><span>Valor mapeado</span><strong>R$ {{ '{:,.2f}'.format(valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</strong><small>Produtos sob análise</small></div>
 </div>
 <section class="panel filter-panel geo-toolbar">
-<div class="geo-toolbar-head"><div><h2>Filtros do mapa</h2><p>Refine a visualização ou processe os endereços pendentes em lotes.</p></div>
-{% if pendentes %}<div class="geo-batch-actions"><button id="locateAllBtn" class="btn primary" type="button">Localizar endereços</button><span id="geoProgressText" class="geo-progress-text">{{ pendentes|length }} pendente(s)</span></div>{% endif %}</div>{% if pendentes %}<div class="geo-progress"><div id="geoProgressBar" class="geo-progress-bar"></div></div>{% endif %}
-<form method="get" class="geo-filters">
-<input name="q" value="{{ request.args.get('q','') }}" placeholder="Endereço, CEP, TBR ou cliente">
-{% if current_user.can_view_all_bases %}<select name="base_id"><option value="">Todas as bases</option>{% for b in bases %}<option value="{{ b.id }}" {% if request.args.get('base_id')|int == b.id %}selected{% endif %}>{{ b.codigo }}</option>{% endfor %}</select>{% endif %}
-<select name="motorista"><option value="">Todos os motoristas</option>{% for item in motoristas %}<option {% if request.args.get('motorista') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
-<select name="login"><option value="">Todos os logins</option>{% for item in logins %}<option {% if request.args.get('login') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
-<select name="produto"><option value="">Todos os produtos</option>{% for item in produtos %}<option {% if request.args.get('produto') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
-{{ operational_fields(bases, request.args.get('base_id'), data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}<button class="btn primary">Aplicar filtros</button><a class="btn ghost" href="{{ url_for('geo.index') }}">Limpar</a>
-<small class="filter-help">A consulta usa a data de entrega. Semanas e anos são carregados diretamente do banco.</small></form></section>
+  <div class="geo-toolbar-head">
+    <div><h2>Filtros do mapa</h2><p>Use a mesma consulta operacional das demais telas e refine apenas os dados específicos do mapa.</p></div>
+    {% if pendentes %}<button id="locateAllBtn" class="btn primary" type="button">Localizar endereços</button>{% endif %}
+  </div>
+  <div class="geo-status-grid">
+    <div class="geo-status-card success"><span>Localizados</span><strong id="geoLocatedCount">{{ exatos|length }}</strong><small>endereços exatos</small></div>
+    <div class="geo-status-card accent"><span>Aproximados</span><strong id="geoApproxCount">{{ aproximados|length }}</strong><small>por CEP</small></div>
+    <div class="geo-status-card warning"><span>Pendentes</span><strong id="geoPendingCount">{{ pendentes|length }}</strong><small>sem coordenadas</small></div>
+  </div>
+  {% if pendentes %}
+  <div class="geo-progress-wrap">
+    <div class="geo-progress"><div id="geoProgressBar" class="geo-progress-bar"></div></div>
+    <span id="geoProgressText" class="geo-progress-text">{{ pendentes|length }} endereço(s) aguardando localização</span>
+  </div>
+  {% endif %}
+  <form method="get" class="enterprise-filter-bar enterprise-filter-geo">
+    <label class="filter-field wide"><span>Pesquisa</span><input name="q" value="{{ request.args.get('q','') }}" placeholder="Endereço, CEP, TBR ou cliente"></label>
+    {{ operational_fields(bases, request.args.get('base_id'), data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
+    <label class="filter-field"><span>Motorista</span><select name="motorista"><option value="">Todos os motoristas</option>{% for item in motoristas %}<option value="{{ item }}" {% if request.args.get('motorista') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+    <label class="filter-field"><span>Login</span><select name="login"><option value="">Todos os logins</option>{% for item in logins %}<option value="{{ item }}" {% if request.args.get('login') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+    <label class="filter-field"><span>Categoria/Produto</span><select name="produto"><option value="">Todos</option>{% for item in produtos %}<option value="{{ item }}" {% if request.args.get('produto') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('geo.index') }}">Limpar</a>
+    <small class="filter-help">A consulta usa a data de entrega. As semanas e os anos exibidos existem no banco.</small>
+  </form>
+</section>
 <section class="panel cep-tracking-panel"><div class="panel-head"><div><h2>Rastreamento por CEP4</h2><p>Agrupamento automático pelos 4 primeiros dígitos, preservando o zero inicial. Clique para abrir mapa, heatmap e endereços.</p></div></div><div class="cep-chip-list">{% for group in cep_groups[:30] %}<a class="cep-chip" href="{{ url_for('geo.index', cep4=group.cep4, base_id=group.base_id) }}"><div class="cep-chip-head"><strong>{{ group.cep4 }}</strong><span class="base-tag">{{ group.base }}</span></div><span>{{ group.casos }} DNR · {{ group.enderecos|length }} endereço(s)</span><small>{{ group.mapeados }} no mapa · R$ {{ '%.2f'|format(group.valor) }}</small></a>{% else %}<div class="empty">Nenhum CEP4 disponível.</div>{% endfor %}</div></section>
 <div class="geo-layout">
 <section class="panel geo-map-panel"><div class="panel-head"><div><h2>Mapa operacional</h2><p>Endereços iguais são agrupados em um único ponto para carregar mais rápido. Clique para ver somente os DNRs daquele local.</p></div><div class="map-switch"><button id="clusterMode" class="btn small primary" type="button">Clusters</button><button id="heatMode" class="btn small" type="button">Heatmap</button></div></div><div class="map-legend"><span><i class="legend-dot exact"></i> Exato</span><span><i class="legend-dot approximate"></i> Aproximado pelo CEP</span><span><i class="legend-dot pending"></i> Pendente</span></div><div id="geoMap"><div class="map-loading">Carregando pontos do mapa…</div></div></section>
@@ -51,12 +66,12 @@ async function processPendingGeo(){
        progressText.textContent=`Pausado pelo serviço. Aguarde ${data.wait||60}s e tente novamente.`;
        break;
      }
-     if(data.ok)located++; else failed++;
+     if(data.ok){located++;} else {failed++;}
    }catch(error){failed++;}
    done++;
    const pct=Math.round(done/pendingGeoIds.length*100);
    if(progressBar)progressBar.style.width=pct+'%';
-   if(progressText)progressText.textContent=`${done}/${pendingGeoIds.length} processados · ${located} localizados · ${failed} pendentes`;
+   if(progressText)progressText.textContent=`${done}/${pendingGeoIds.length} processados · ${located} localizados · ${failed} não localizados`; const pendingCount=document.getElementById('geoPendingCount'); if(pendingCount)pendingCount.textContent=Math.max(pendingGeoIds.length-done+failed,0);
  }
  locateAllBtn.disabled=false; locateAllBtn.textContent='Localizar endereços';
  if(located>0)setTimeout(()=>window.location.reload(),700);
@@ -72,7 +87,7 @@ let heat = null;
 const apiParams = new URLSearchParams(window.location.search); apiParams.set('_origin', window.location.pathname + window.location.search);
 fetch('{{ url_for("geo.api_pontos") }}?' + apiParams.toString()).then(r=>{if(!r.ok)throw new Error('Falha ao carregar pontos');return r.json();}).then(points=>{document.querySelector('#geoMap .map-loading')?.remove();
  const heatData=[]; const bounds=[]; let focusMarker=null;
- points.forEach(p=>{ const markerIcon=L.divIcon({className:'custom-map-marker',html:`<span class="${p.approximate?'approximate':'exact'}"></span>`,iconSize:[18,18],iconAnchor:[9,9]}); const marker=L.marker([p.lat,p.lng],{icon:markerIcon});
+ if(!points.length){const loading=document.querySelector('#geoMap .map-loading');if(loading)loading.textContent='Nenhum ponto com coordenadas válidas para os filtros atuais. Use “Localizar endereços” ou informe coordenadas manualmente.';} points.forEach(p=>{ const markerIcon=L.divIcon({className:'custom-map-marker',html:`<span class="${p.approximate?'approximate':'exact'}"></span>`,iconSize:[18,18],iconAnchor:[9,9]}); const marker=L.marker([p.lat,p.lng],{icon:markerIcon});
   marker.bindPopup(`<div class="map-popup"><strong>${p.count>1?p.count+' DNRs neste endereço':p.codigo}</strong><span>${p.tbr} · ${p.base}</span><b>${p.cliente}</b><span>${p.endereco}</span><span>Precisão: ${p.approximate ? "aproximada — " + p.precision : "endereço localizado"}</span><span>Motorista(s): ${p.motorista || '—'}</span><span>Login(s): ${p.login || '—'}</span><span>${p.produto || 'Produto não informado'} · R$ ${p.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span><a href="${p.url}">Ver somente estes DNRs →</a></div>`);
   cluster.addLayer(marker); heatData.push([p.lat,p.lng,p.heat_weight || 1]); bounds.push([p.lat,p.lng]); if(focusId && p.id===focusId){focusMarker=marker;}
  }); map.addLayer(cluster); heat=L.heatLayer(heatData,{radius:32,blur:24,maxZoom:16,minOpacity:.35}); if(focusMarker){map.setView(focusMarker.getLatLng(),17); setTimeout(()=>focusMarker.openPopup(),350);} else if(bounds.length) map.fitBounds(bounds,{padding:[30,30],maxZoom:15});
