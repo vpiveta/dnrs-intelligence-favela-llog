@@ -64,3 +64,8 @@
 - Filtros por dia exato, intervalo de datas e semana, combináveis com base individual ou todas as bases.
 - Escolha entre data de entrega e data de abertura do DNR.
 - Novo campo data de abertura do DNR reconhecido na importação e atualização de lotes antigos.
+
+## 2.0.0-rc2.3
+- Padronização responsiva dos filtros avançados.
+- Correção do modal de exclusão de lotes.
+- Campos de data, semana, ano, base e ações alinhados ao layout.

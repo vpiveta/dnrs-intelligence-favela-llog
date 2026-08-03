@@ -109,3 +109,158 @@ td small.muted{display:block;margin-top:.25rem}
 
 /* Resumo semanal por base */
 .weekly-summary-panel{margin-bottom:18px}.weekly-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:13px}.weekly-card{position:relative;overflow:hidden;min-height:145px;padding:17px;border:1px solid #2c3b55;border-radius:16px;background:linear-gradient(145deg,#17243a,#101927);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}.weekly-card:before{content:"";position:absolute;width:90px;height:90px;right:-35px;top:-35px;border-radius:50%;background:radial-gradient(circle,rgba(79,124,255,.3),transparent 70%)}.weekly-card:hover{transform:translateY(-3px);border-color:#5579d6;box-shadow:0 16px 38px rgba(0,0,0,.3)}.weekly-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.weekly-base,.weekly-week{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.5px}.weekly-base{padding:6px 9px;color:#a9bbff;background:rgba(79,124,255,.14);border:1px solid rgba(79,124,255,.28)}.weekly-week{padding:6px 9px;color:#8de3c1;background:rgba(37,194,138,.12);border:1px solid rgba(37,194,138,.25)}.weekly-card>strong{display:block;font-size:32px;margin:16px 0 2px}.weekly-card>small{display:block;color:var(--muted);font-size:11px}.weekly-card>b{display:block;margin-top:13px;color:#8aa6ff;font-size:11px}.empty.compact{padding:24px 12px}.empty.compact>div{font-size:28px}.empty.compact h3{margin:6px 0}@media(max-width:800px){.weekly-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.weekly-card-grid{grid-template-columns:1fr}}
+
+
+/* Enterprise 2.0 RC2.3 — filtros e modais responsivos */
+.command-heading:has(.advanced-filters){
+  display:grid;
+  grid-template-columns:minmax(220px,320px) minmax(0,1fr);
+  align-items:start;
+  gap:24px;
+}
+.advanced-filters{
+  width:100%;
+  min-width:0;
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  gap:10px!important;
+  align-items:end!important;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(20,31,49,.96),rgba(13,21,35,.96));
+  box-shadow:0 12px 35px rgba(0,0,0,.16);
+}
+.advanced-filters input,
+.advanced-filters select{
+  width:100%!important;
+  min-width:0!important;
+  min-height:44px;
+  margin:0!important;
+  padding:10px 12px!important;
+  border:1px solid #2b3a54!important;
+  border-radius:11px!important;
+  background:#0d1523!important;
+  color:#eef3fb!important;
+  color-scheme:dark;
+  font:inherit;
+  outline:none;
+}
+.advanced-filters input:focus,
+.advanced-filters select:focus{
+  border-color:var(--blue)!important;
+  box-shadow:0 0 0 3px rgba(79,124,255,.14);
+}
+.advanced-filters input::placeholder{color:#7f8da3;opacity:1}
+.advanced-filters .btn{
+  min-height:44px;
+  width:100%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+}
+.advanced-filters .filter-help{
+  grid-column:1/-1;
+  display:flex;
+  align-items:flex-start;
+  gap:7px;
+  min-width:0;
+  padding:9px 11px;
+  border-radius:10px;
+  background:rgba(79,124,255,.07);
+  color:#9fb0c8;
+  font-size:11px;
+  line-height:1.45;
+  white-space:normal;
+}
+.advanced-filters .filter-help:before{content:'ℹ';color:#7fa0ff;font-weight:800}
+/* Sala de Guerra / Analytics: distribuição compacta em duas linhas */
+.quick-filters.advanced-filters select[name="date_source"]{grid-column:span 2}
+.quick-filters.advanced-filters input[type="date"]{grid-column:span 2}
+.quick-filters.advanced-filters input[name="semana"]{grid-column:span 1}
+.quick-filters.advanced-filters input[name="ano"]{grid-column:span 1}
+.quick-filters.advanced-filters select[name="periodo"]{grid-column:span 2}
+.quick-filters.advanced-filters select[name="base_id"]{grid-column:span 3}
+.quick-filters.advanced-filters button{grid-column:span 1}
+.quick-filters.advanced-filters>a.btn{grid-column:span 1}
+/* Lista de casos: busca em largura maior, demais filtros uniformes */
+.filter-panel{overflow:hidden}
+.case-filters.advanced-filters{grid-template-columns:repeat(12,minmax(0,1fr))}
+.case-filters.advanced-filters>input[name="q"]{grid-column:span 4}
+.case-filters.advanced-filters>select{grid-column:span 2}
+.case-filters.advanced-filters>input[type="date"]{grid-column:span 2}
+.case-filters.advanced-filters>input[type="number"]{grid-column:span 1}
+.case-filters.advanced-filters>button,
+.case-filters.advanced-filters>a.btn{grid-column:span 1}
+/* Modal de exclusão: neutraliza o display inline-flex herdado de table-actions */
+.delete-dialog{
+  width:min(560px,calc(100vw - 32px));
+  max-height:min(720px,calc(100vh - 32px));
+  overflow:auto;
+  border:1px solid #30405a;
+  border-radius:20px;
+  background:linear-gradient(160deg,#121c2c,#0d1522);
+  color:var(--text);
+  padding:0;
+}
+.delete-dialog form{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+  padding:26px!important;
+}
+.delete-dialog h3{font-size:20px;line-height:1.25;margin:0 0 8px}
+.delete-dialog p{margin:0 0 22px;color:var(--muted);font-size:12px;line-height:1.55}
+.delete-dialog label{display:block!important;margin:0 0 16px;color:#c7d2e2;font-size:12px;font-weight:700}
+.delete-dialog input,
+.delete-dialog textarea{
+  display:block;
+  width:100%!important;
+  min-height:44px;
+  margin:8px 0 0!important;
+  padding:11px 12px;
+  border:1px solid #31415d;
+  border-radius:11px;
+  background:#0a1220;
+  color:#fff;
+  outline:none;
+  resize:vertical;
+}
+.delete-dialog textarea{min-height:96px}
+.delete-dialog input:focus,.delete-dialog textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(79,124,255,.14)}
+.delete-dialog .dialog-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:22px;
+}
+.delete-dialog .dialog-actions .btn{width:100%;min-height:44px;justify-content:center}
+@media(max-width:1320px){
+  .command-heading:has(.advanced-filters){grid-template-columns:1fr}
+  .quick-filters.advanced-filters select[name="base_id"]{grid-column:span 4}
+}
+@media(max-width:980px){
+  .advanced-filters{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .quick-filters.advanced-filters select[name="date_source"],
+  .quick-filters.advanced-filters input[type="date"],
+  .quick-filters.advanced-filters select[name="periodo"],
+  .quick-filters.advanced-filters select[name="base_id"]{grid-column:span 3}
+  .quick-filters.advanced-filters input[name="semana"],
+  .quick-filters.advanced-filters input[name="ano"],
+  .quick-filters.advanced-filters button,
+  .quick-filters.advanced-filters>a.btn{grid-column:span 2}
+  .case-filters.advanced-filters{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .case-filters.advanced-filters>input[name="q"]{grid-column:1/-1}
+  .case-filters.advanced-filters>select,
+  .case-filters.advanced-filters>input[type="date"]{grid-column:span 3}
+  .case-filters.advanced-filters>input[type="number"],
+  .case-filters.advanced-filters>button,
+  .case-filters.advanced-filters>a.btn{grid-column:span 2}
+}
+@media(max-width:640px){
+  .advanced-filters,.case-filters.advanced-filters{grid-template-columns:1fr!important;padding:12px}
+  .advanced-filters>*{grid-column:1/-1!important}
+  .delete-dialog form{padding:20px!important}
+  .delete-dialog .dialog-actions{grid-template-columns:1fr}
+}

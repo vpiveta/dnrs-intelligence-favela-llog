@@ -15,7 +15,7 @@
     <h1>Sala de Guerra</h1>
     <p>Prioridades, crescimento, risco e recomendações para orientar a ação do gerente.</p>
   </div>
-  <form class="quick-filters" method="get">
+  <form class="quick-filters advanced-filters" method="get">
 <select name="date_source"><option value="dnr" {% if date_source=='dnr' %}selected{% endif %}>Data de entrega</option><option value="abertura" {% if date_source=='abertura' %}selected{% endif %}>Data de abertura</option></select><input type="date" name="data" value="{{ data }}" title="Dia exato"><input type="date" name="data_inicio" value="{{ data_inicio }}" title="Data inicial"><input type="date" name="data_fim" value="{{ data_fim }}" title="Data final"><input type="number" min="1" max="53" name="semana" value="{{ semana or '' }}" placeholder="Semana"><input type="number" min="2020" max="2100" name="ano" value="{{ ano_filtro or '' }}" placeholder="Ano"><select name="periodo">
       {% for n,label in [('all','Todo o período'),(14,'14 dias'),(30,'30 dias'),(60,'60 dias'),(90,'90 dias'),(180,'180 dias')] %}
       <option value="{{ n }}" {% if periodo|string == n|string %}selected{% endif %}>{{ label }}</option>
