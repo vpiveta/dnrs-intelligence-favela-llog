@@ -29,7 +29,10 @@
       <div class="nav-section">Administração</div>
       <a class="nav-link {% if request.endpoint == 'admin.bases' %}active{% endif %}" href="{{ url_for('admin.bases') }}">◇ <span>Bases</span></a>
       <a class="nav-link {% if request.endpoint == 'admin.usuarios' %}active{% endif %}" href="{{ url_for('admin.usuarios') }}">◎ <span>Usuários</span></a>
+<<<<<<< HEAD
       <a class="nav-link {% if request.endpoint == 'admin.plataforma' %}active{% endif %}" href="{{ url_for('admin.plataforma') }}">⚙ <span>Plataforma</span></a>
+=======
+>>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8
       {% endif %}
     </nav>
     <div class="sidebar-user"><div class="avatar">{{ current_user.nome[:1] }}</div><div><strong>{{ current_user.nome }}</strong><span>{{ current_user.perfil }} · {{ current_user.base_scope_label }}</span></div><a href="{{ url_for('auth.logout') }}" title="Sair">↗</a></div>

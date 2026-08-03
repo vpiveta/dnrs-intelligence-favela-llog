@@ -3,7 +3,10 @@ from flask_login import login_required
 from app.core.decorators import admin_required
 from app.extensions import db
 from app.models import BaseOperacional, User
+<<<<<<< HEAD
 from app.core.platform import platform_health
+=======
+>>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -52,6 +55,7 @@ def usuarios():
             return redirect(url_for("admin.usuarios"))
     items = db.session.scalars(db.select(User).order_by(User.nome)).all()
     return render_template("admin/usuarios.html", items=items, bases=bases)
+<<<<<<< HEAD
 
 
 @bp.get("/plataforma")
@@ -59,3 +63,5 @@ def usuarios():
 @admin_required
 def plataforma():
     return render_template("admin/plataforma.html", health=platform_health())
+=======
+>>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8

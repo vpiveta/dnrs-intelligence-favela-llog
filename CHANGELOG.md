@@ -12,6 +12,7 @@
 - Inicializador local separado da configuração web.
 - Controle de acesso por base preservado.
 - Versão visível `0.8.0-web`.
+<<<<<<< HEAD
 
 
 ## 1.0.0-enterprise
@@ -20,3 +21,5 @@
 - Atualização oficial via GitHub/Render.
 - Estrutura de pastas versionada sem dados sensíveis.
 - Workflow de verificação no GitHub.
+=======
+>>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8
