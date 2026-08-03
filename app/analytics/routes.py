@@ -4,13 +4,14 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import is_overdue, value_risk_level
 from app.core.identity import abbreviate_person
+from app.core.date_filters import apply_date_filters, date_filter_context
 
 bp = Blueprint("analytics", __name__, url_prefix="/analytics")
 CONCLUIDOS = {"RESOLVIDO", "ENCERRADO", "CONCLUIDO"}
@@ -86,6 +87,75 @@ def _top_with_others(rows, limit=12):
     return kept
 
 
+def _week_key(caso):
+    if not caso.semana_numero:
+        return None
+    year = int(caso.ano or datetime.now().year)
+    return (year, int(caso.semana_numero))
+
+
+def _period_comparison(casos):
+    """Compara as semanas mais recentes ou blocos de 4 semanas.
+
+    Com 8 ou mais semanas distintas, compara as 4 mais recentes (período atual)
+    com as 4 imediatamente anteriores (período anterior). Com menos semanas,
+    compara a maior semana disponível com a imediatamente anterior.
+    """
+    keys = sorted({key for c in casos if (key := _week_key(c))})
+    if not keys:
+        return {"mode": "none", "current_keys": [], "previous_keys": [], "current_label": "—", "previous_label": "—"}
+    if len(keys) >= 8:
+        current = keys[-4:]
+        previous = keys[-8:-4]
+        current_label = f"Período atual · S{current[0][1]:02d}–S{current[-1][1]:02d}"
+        previous_label = f"Período anterior · S{previous[0][1]:02d}–S{previous[-1][1]:02d}"
+        mode = "month"
+    else:
+        current = [keys[-1]]
+        previous = [keys[-2]] if len(keys) > 1 else []
+        current_label = f"Semana atual · S{current[0][1]:02d}"
+        previous_label = f"Semana anterior · S{previous[0][1]:02d}" if previous else "Sem semana anterior"
+        mode = "week"
+    return {"mode": mode, "current_keys": current, "previous_keys": previous, "current_label": current_label, "previous_label": previous_label}
+
+
+def _opportunities(casos, base_labels, consolidated):
+    configs = [
+        ("CEP4", "cep4", "Revisar roteirização e validar os endereços antes da saída."),
+        ("Categoria", "categoria", "Reforçar conferência, acondicionamento e orientação para a categoria."),
+        ("Horário", "faixa_horaria", "Ajustar sequência de rota e acompanhamento no intervalo crítico."),
+        ("Motorista", "motorista", "Realizar acompanhamento individual e revisar padrão de entrega."),
+        ("Login", "login_utilizado", "Validar compartilhamento do login e o responsável pela rota."),
+    ]
+    result = []
+    total_cases = max(len(casos), 1)
+    for tipo, attr, action in configs:
+        grouped = defaultdict(lambda: {"total": 0, "valor": Decimal("0"), "base_id": None, "filter": ""})
+        for c in casos:
+            raw = _label(getattr(c, attr, None))
+            if raw == "Não informado":
+                continue
+            base = base_labels.get(c.base_id, "BASE")
+            label = f"{base} · {raw}" if consolidated else raw
+            row = grouped[label]
+            row["total"] += 1
+            row["valor"] += Decimal(c.valor or 0)
+            row["base_id"] = c.base_id
+            row["filter"] = raw
+        if not grouped:
+            continue
+        name, row = max(grouped.items(), key=lambda item: (item[1]["total"], item[1]["valor"]))
+        reduction = max(1, round(row["total"] * 0.20)) if row["total"] >= 3 else 0
+        economy = (row["valor"] / row["total"] * reduction) if row["total"] and reduction else Decimal("0")
+        result.append({
+            "tipo": tipo, "nome": name, "filter": row["filter"], "base_id": row["base_id"],
+            "casos": row["total"], "participacao": round(row["total"] / total_cases * 100),
+            "reducao": reduction, "economia": economy, "acao": action,
+        })
+    result.sort(key=lambda x: (x["casos"], x["economia"]), reverse=True)
+    return result
+
+
 @bp.route("/")
 @login_required
 def index():
@@ -97,7 +167,7 @@ def index():
             dias = max(7, min(int(periodo), 730))
         except ValueError:
             periodo = "all"
-    query = _visible_query()
+    query = apply_date_filters(_visible_query())
     if dias:
         inicio = datetime.now(timezone.utc) - timedelta(days=dias)
         query = query.where(CasoDNR.criado_em >= inicio)
@@ -157,25 +227,38 @@ def index():
             **{level.lower(): risks[level] for level in RISK_ORDER},
         })
 
-    week_numbers = sorted({int(c.semana_numero) for c in casos if c.semana_numero})
-    current_week = week_numbers[-1] if week_numbers else None
-    previous_week = week_numbers[-2] if len(week_numbers) > 1 else None
+    period_info = _period_comparison(casos)
+    current_keys = set(period_info["current_keys"])
+    previous_keys = set(period_info["previous_keys"])
     comparison = []
-    if current_week:
-        current_cases = [c for c in casos if c.semana_numero == current_week]
-        previous_cases = [c for c in casos if c.semana_numero == previous_week] if previous_week else []
+    if current_keys:
+        current_cases = [c for c in casos if _week_key(c) in current_keys]
+        previous_cases = [c for c in casos if _week_key(c) in previous_keys]
         for base in bases:
             cur_base = [c for c in current_cases if c.base_id == base.id]
             prev_base = [c for c in previous_cases if c.base_id == base.id]
             for label, attr in (("CEP4", "cep4"), ("Motorista", "motorista"), ("Login", "login_utilizado"), ("Categoria", "categoria")):
                 cur = Counter(_label(getattr(c, attr, None)) for c in cur_base)
                 prev = Counter(_label(getattr(c, attr, None)) for c in prev_base)
-                for name, count in cur.most_common(5):
+                names = set(cur) | set(prev)
+                ranked = sorted(names, key=lambda name: (cur.get(name, 0), prev.get(name, 0)), reverse=True)[:5]
+                for name in ranked:
+                    count = cur.get(name, 0)
                     old = prev.get(name, 0)
                     delta = count - old
                     pct = round((delta / old) * 100) if old else (100 if count else 0)
                     comparison.append({"base": base.codigo, "base_id": base.id, "tipo": label, "nome": name, "atual": count, "anterior": old, "delta": delta, "percentual": pct})
-        comparison.sort(key=lambda x: (x["delta"], x["atual"]), reverse=True)
+        comparison.sort(key=lambda x: (abs(x["delta"]), x["atual"]), reverse=True)
+
+    opportunities = _opportunities(casos, base_labels, consolidated)
+    param_by_type = {"Categoria": "categoria", "Horário": "q", "Motorista": "motorista", "Login": "login"}
+    for item in opportunities:
+        if item["tipo"] == "CEP4":
+            item["url"] = url_for("geo.index", cep4=item["filter"], base_id=item["base_id"])
+        else:
+            params = {"base_id": item["base_id"], "next": request.full_path}
+            params[param_by_type.get(item["tipo"], "q")] = item["filter"]
+            item["url"] = url_for("cases.index", **params)
 
     chart_data = {
         "dia": por_dia,
@@ -204,11 +287,11 @@ def index():
     }
 
     return render_template(
-        "analytics/index.html", bases=bases, base_id=base_id, periodo=dias,
+        "analytics/index.html", bases=bases, base_id=base_id, periodo=periodo,
         total=total, resolvidos=resolvidos, taxa=round(resolvidos / total * 100) if total else 0,
         criticos=risk_counts["CRITICO"], altos=risk_counts["ALTO"], medios=risk_counts["MEDIO"], baixos=risk_counts["BAIXO"],
         vencidos=len(overdue_cases), valor_total=valor_total, cep4_critico=cep4_critico,
         chart_data=chart_data, base_rows=base_rows,
-        comparison=comparison[:30], current_week=current_week, previous_week=previous_week,
-        consolidated=consolidated,
+        comparison=comparison[:30], period_info=period_info, opportunities=opportunities,
+        consolidated=consolidated, **date_filter_context(),
     )

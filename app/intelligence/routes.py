@@ -11,6 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level
 from app.core.identity import client_address_key, normalize_address, normalize_text
+from app.core.date_filters import apply_date_filters, date_filter_context
 
 bp = Blueprint("intelligence", __name__, url_prefix="/inteligencia")
 
@@ -200,7 +201,7 @@ def index():
             dias = max(7, min(int(periodo), 730))
         except ValueError:
             periodo = "all"
-    query = _scoped_query()
+    query = apply_date_filters(_scoped_query())
     if dias:
         inicio = datetime.now(timezone.utc) - timedelta(days=dias)
         query = query.where(CasoDNR.criado_em >= inicio)
@@ -270,5 +271,5 @@ def index():
         top_enderecos=top_enderecos, top_motoristas=top_motoristas,
         top_produtos=top_produtos, procedimentos=procedimentos,
         bases=bases, base_stats=base_stats, insights=insights,
-        periodo=periodo, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora,
+        periodo=periodo, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora, **date_filter_context(),
     )

@@ -43,6 +43,10 @@ ALIASES = {
     "produto": ["produto", "product", "item"],
     "categoria": ["categoria", "category", "categoria produto"],
     "valor": ["valor", "price", "preco", "preço", "valor produto"],
+    "data_abertura_dnr": [
+        "data de abertura do dnr", "data abertura dnr", "data de abertura",
+        "abertura do dnr", "dnr open date", "open date", "data abertura",
+    ],
     "data_dnr": [
         "data da entrega", "data dnr", "delivery date", "data entrega",
         "data ocorrencia", "data ocorrência", "data",
@@ -76,6 +80,7 @@ def detect_columns(headers: list[str]) -> dict[str, str]:
 
     # O layout oficial diferencia esses campos apenas pela capitalização.
     exact_priority = {
+        "data_abertura_dnr": ["Data de abertura do DNR", "data de abertura do dnr"],
         "data_hora_entrega": ["Data de entrega"],
         "data_dnr": ["data da entrega"],
         "hora_dnr": ["hora da entrega"],
@@ -391,6 +396,7 @@ def _apply_row_to_case(caso: CasoDNR, row: dict[str, object], mapping: dict[str,
     """Atualiza um caso existente com os dados disponíveis no arquivo original."""
     changed = False
     full_dt = parse_datetime(_field(row, mapping, "data_hora_entrega"))
+    data_abertura_dnr = parse_date(_field(row, mapping, "data_abertura_dnr"))
     data_dnr = parse_date(_field(row, mapping, "data_dnr")) or (full_dt.date() if full_dt else None)
     hora_dnr = parse_time(_field(row, mapping, "hora_dnr")) or (full_dt.time() if full_dt else None)
     values = {
@@ -405,6 +411,7 @@ def _apply_row_to_case(caso: CasoDNR, row: dict[str, object], mapping: dict[str,
         "categoria": str(_field(row, mapping, "categoria") or "").strip(),
         "pedido": str(_field(row, mapping, "pedido") or "").strip(),
         "valor": parse_decimal(_field(row, mapping, "valor")),
+        "data_abertura_dnr": data_abertura_dnr,
         "data_dnr": data_dnr,
         "hora_dnr": hora_dnr,
         "data_hora_entrega": full_dt or (datetime.combine(data_dnr, hora_dnr) if data_dnr and hora_dnr else None),
@@ -497,6 +504,7 @@ def _process_import(path: Path, stored_name: str, original_name: str, base_id: i
                 continue
 
             full_dt = parse_datetime(_field(row, mapping, "data_hora_entrega"))
+            data_abertura_dnr = parse_date(_field(row, mapping, "data_abertura_dnr"))
             data_dnr = parse_date(_field(row, mapping, "data_dnr")) or (full_dt.date() if full_dt else None)
             hora_dnr = parse_time(_field(row, mapping, "hora_dnr")) or (full_dt.time() if full_dt else None)
             semana = parse_week(_field(row, mapping, "semana"), data_dnr)
@@ -519,6 +527,7 @@ def _process_import(path: Path, stored_name: str, original_name: str, base_id: i
                 categoria=str(_field(row, mapping, "categoria") or "").strip(),
                 pedido=str(_field(row, mapping, "pedido") or "").strip(),
                 valor=parse_decimal(_field(row, mapping, "valor")),
+                data_abertura_dnr=data_abertura_dnr,
                 data_dnr=data_dnr,
                 hora_dnr=hora_dnr,
                 data_hora_entrega=full_dt or (datetime.combine(data_dnr, hora_dnr) if data_dnr and hora_dnr else None),

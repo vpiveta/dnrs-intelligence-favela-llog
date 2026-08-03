@@ -19,7 +19,11 @@ def normalized(value: str | None) -> str:
 
 
 def sla_date(caso: CasoDNR) -> date:
-    """Prazo operacional: três dias após o upload do lote."""
+    """Prazo para concluir a análise: três dias após o upload do lote.
+
+    A Data de entrega e a Data de abertura do DNR são informações da planilha
+    e nunca alteram este prazo operacional.
+    """
     if caso.importacao and caso.importacao.criado_em:
         return caso.importacao.criado_em.date() + timedelta(days=3)
     if caso.criado_em:

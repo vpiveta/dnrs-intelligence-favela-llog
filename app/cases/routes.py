@@ -12,6 +12,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR, HistoricoCaso
 from app.core.operational_rules import critical_context, critical_reasons, is_overdue, sla_date, value_risk_level
 from app.core.identity import client_address_key, normalize_address
+from app.core.date_filters import apply_date_filters, date_filter_context
 
 bp = Blueprint("cases", __name__, url_prefix="/casos")
 
@@ -34,7 +35,7 @@ def _visible_query():
 @bp.route("/")
 @login_required
 def index():
-    query = _visible_query()
+    query = apply_date_filters(_visible_query())
     busca = request.args.get("q", "").strip()
     status = request.args.get("status", "").strip().upper()
     prioridade = request.args.get("prioridade", "").strip().upper()
@@ -159,7 +160,7 @@ def index():
     bases = db.session.scalars(db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)).all()
     if not current_user.can_view_all_bases:
         bases = [current_user.base]
-    return render_template("cases/index.html", casos=casos, bases=bases, analysis_label=analysis_labels.get(view), active_view=view)
+    return render_template("cases/index.html", casos=casos, bases=bases, analysis_label=analysis_labels.get(view), active_view=view, **date_filter_context())
 
 
 @bp.route("/novo", methods=["GET", "POST"])
@@ -198,6 +199,7 @@ def novo():
             valor=valor,
             status=request.form.get("status", "PENDENTE").upper(),
             prioridade=request.form.get("prioridade", "MEDIA").upper(),
+            data_abertura_dnr=datetime.strptime(request.form.get("data_abertura_dnr"), "%Y-%m-%d").date() if request.form.get("data_abertura_dnr") else None,
             data_dnr=datetime.strptime(request.form.get("data_dnr"), "%Y-%m-%d").date() if request.form.get("data_dnr") else None,
             hora_dnr=datetime.strptime(request.form.get("hora_dnr"), "%H:%M").time() if request.form.get("hora_dnr") else None,
             prazo=date.today() + timedelta(days=3),
@@ -231,8 +233,10 @@ def detalhe(caso_id: int):
         login_proprio = request.form.get("login_proprio", "")
         caso.login_proprio = (login_proprio == "SIM") if login_proprio else None
         caso.proprietario_login = request.form.get("proprietario_login", caso.proprietario_login or "").strip()
+        data_abertura_dnr = request.form.get("data_abertura_dnr", "").strip()
         data_dnr = request.form.get("data_dnr", "").strip()
         hora_dnr = request.form.get("hora_dnr", "").strip()
+        caso.data_abertura_dnr = datetime.strptime(data_abertura_dnr, "%Y-%m-%d").date() if data_abertura_dnr else caso.data_abertura_dnr
         caso.data_dnr = datetime.strptime(data_dnr, "%Y-%m-%d").date() if data_dnr else caso.data_dnr
         caso.hora_dnr = datetime.strptime(hora_dnr, "%H:%M").time() if hora_dnr else caso.hora_dnr
         historico = HistoricoCaso(

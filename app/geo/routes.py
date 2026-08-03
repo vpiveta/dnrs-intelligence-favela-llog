@@ -18,6 +18,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.identity import normalize_address
+from app.core.date_filters import apply_date_filters, date_filter_context
 
 bp = Blueprint("geo", __name__, url_prefix="/geo")
 
@@ -111,6 +112,7 @@ def _visible_query():
 
 
 def _apply_filters(query):
+    query = apply_date_filters(query)
     base_id = request.args.get("base_id", type=int)
     motorista = request.args.get("motorista", "").strip()
     login = request.args.get("login", "").strip()
@@ -188,6 +190,7 @@ def index():
         valor=valor,
         cep_groups=cep_groups,
         focus_id=request.args.get("focus", type=int),
+        **date_filter_context(),
     )
 
 
@@ -455,6 +458,34 @@ def geocodificar(caso_id: int):
         db.session.commit()
         flash("O serviço de localização está temporariamente indisponível. Tente novamente mais tarde; o caso continua visível no mapa em posição aproximada.", "warning")
     return redirect(request.referrer or url_for("geo.index"))
+
+
+@bp.route("/api/geocodificar/<int:caso_id>", methods=["POST"])
+@login_required
+def api_geocodificar(caso_id: int):
+    caso = db.session.get(CasoDNR, caso_id)
+    if not caso:
+        return jsonify({"ok": False, "error": "Caso não encontrado."}), 404
+    if not _can_edit(caso):
+        return jsonify({"ok": False, "error": "Sem permissão."}), 403
+    if caso.latitude is not None and caso.longitude is not None:
+        return jsonify({"ok": True, "status": caso.geocode_status or "LOCALIZADO", "lat": caso.latitude, "lng": caso.longitude, "cached": True})
+    try:
+        localizado = _save_geocode(caso, _geocode(caso))
+        db.session.commit()
+        return jsonify({
+            "ok": bool(localizado), "status": caso.geocode_status,
+            "lat": caso.latitude, "lng": caso.longitude,
+            "error": None if localizado else "Endereço não localizado",
+        })
+    except GeocodeRateLimited as exc:
+        caso.geocode_status = "AGUARDANDO_SERVICO"
+        db.session.commit()
+        return jsonify({"ok": False, "rate_limited": True, "wait": exc.wait_seconds, "error": str(exc)}), 429
+    except requests.RequestException:
+        caso.geocode_status = "ERRO_SERVICO"
+        db.session.commit()
+        return jsonify({"ok": False, "error": "Serviço de localização indisponível."}), 503
 
 
 @bp.route("/geocodificar-pendentes", methods=["POST"])

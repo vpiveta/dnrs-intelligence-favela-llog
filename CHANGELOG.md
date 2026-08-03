@@ -52,3 +52,15 @@
 - Hash seguro da senha.
 - Troca obrigatória configurável no primeiro acesso.
 - Redefinição de senha para usuários existentes.
+
+## 2.0.0-rc1
+- Gráficos de categorias e bases convertidos para rosca.
+- Comparação automática entre semana atual/anterior ou blocos de quatro semanas.
+- Painel de oportunidades para redução de DNR.
+- Processamento progressivo dos endereços pendentes no GEO.
+- Diagnóstico de carregamento dos pontos do mapa.
+
+## 2.0.0-rc2
+- Filtros por dia exato, intervalo de datas e semana, combináveis com base individual ou todas as bases.
+- Escolha entre data de entrega e data de abertura do DNR.
+- Novo campo data de abertura do DNR reconhecido na importação e atualização de lotes antigos.

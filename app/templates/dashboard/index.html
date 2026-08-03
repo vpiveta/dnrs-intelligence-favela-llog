@@ -20,6 +20,27 @@
   <div class="kpi accent"><span>Valor em análise</span><strong>R$ {{ '{:,.2f}'.format(valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</strong><small>impacto financeiro</small></div>
 </div>
 
+<section class="panel weekly-summary-panel">
+  <div class="panel-head">
+    <div><h2>DNR por base e semana</h2><p>Resumo automático de cada combinação de base e semana disponível no período selecionado.</p></div>
+    <span class="pill">{{ weekly_cards|length }} combinações</span>
+  </div>
+  {% if weekly_cards %}
+  <div class="weekly-card-grid">
+    {% for item in weekly_cards %}
+    <a class="weekly-card" href="{{ item.url }}">
+      <div class="weekly-card-head"><span class="weekly-base">{{ item.base.codigo }}</span><span class="weekly-week">S{{ item.semana }}</span></div>
+      <strong>{{ item.total }}</strong>
+      <small>Total de DNR{% if item.ano %} · {{ item.ano }}{% endif %}</small>
+      <b>Ver casos ›</b>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty compact"><div>◌</div><h3>Sem dados semanais</h3><p>As semanas aparecerão automaticamente após a importação.</p></div>
+  {% endif %}
+</section>
+
 <div class="dashboard-grid command-grid">
   <section class="panel priorities-panel">
     <div class="panel-head"><div><h2>Fila de prioridades</h2><p>Ordenada pelo impacto e urgência.</p></div><span class="live-label"><i></i> atualizado</span></div>

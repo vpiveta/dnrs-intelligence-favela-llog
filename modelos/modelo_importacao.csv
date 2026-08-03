@@ -1,2 +1,2 @@
-TBR;Cliente;Endereco;CEP;Motorista;Login Utilizado;Produto;Categoria;Valor;Data DNR;Hora;Pedido
-TBR400000001;Cliente Exemplo;Rua Exemplo 100;09999000;Motorista Exemplo;login.exemplo;Celular;Eletrônicos;1599,90;01/08/2026;14:35:00;701-0000000-0000000
+﻿TBR;Data de abertura do DNR;Cliente;Endereco;CEP;Motorista;Login Utilizado;Produto;Categoria;Valor;Data DNR;Hora;Pedido
+TBR400000001;03/08/2026;Cliente Exemplo;Rua Exemplo 100;09999000;Motorista Exemplo;login.exemplo;Celular;Eletrônicos;1599,90;01/08/2026;14:35:00;701-0000000-0000000

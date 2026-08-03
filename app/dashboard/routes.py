@@ -87,6 +87,36 @@ def index():
     comparativo.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
     maior_base = comparativo[0] if comparativo else None
 
+    # Cards semanais por base. A combinação Base + Semana é independente e
+    # respeita o escopo atual (todas as bases ou uma base específica).
+    base_by_id = {b.id: b for b in bases}
+    weekly_counter = Counter(
+        (c.base_id, c.ano or (c.data_dnr.year if c.data_dnr else None), c.semana_numero)
+        for c in casos
+        if c.semana_numero
+    )
+    weekly_cards = []
+    for (card_base_id, card_year, week_number), total_week in weekly_counter.items():
+        base_obj = base_by_id.get(card_base_id) or db.session.get(BaseOperacional, card_base_id)
+        if not base_obj:
+            continue
+        params = {
+            "base_id": card_base_id,
+            "semana": week_number,
+            "date_source": "dnr",
+            "next": request.full_path.rstrip("?"),
+        }
+        if card_year:
+            params["ano"] = card_year
+        weekly_cards.append({
+            "base": base_obj,
+            "semana": week_number,
+            "ano": card_year,
+            "total": total_week,
+            "url": url_for("cases.index", **params),
+        })
+    weekly_cards.sort(key=lambda item: (item["ano"] or 0, item["semana"], item["base"].codigo), reverse=True)
+
     origin = request.full_path.rstrip("?")
     common = {"periodo": dias, "period_source": "created", "next": origin}
     if base_id:
@@ -105,4 +135,5 @@ def index():
         concluidos=concluidos, concluidos_hoje=concluidos_hoje, valor=valor,
         taxa=taxa, prioridades=prioridades, casos=casos[:8], bases=bases,
         comparativo=comparativo, periodo=dias, base_id=base_id, maior_base=maior_base,
+        weekly_cards=weekly_cards,
     )

@@ -11,6 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import critical_context, is_overdue, sla_date, value_risk_level, value_risk_reason
 from app.core.identity import client_address_key, normalize_address, normalize_text
+from app.core.date_filters import apply_date_filters, date_filter_context
 
 bp = Blueprint("warroom", __name__, url_prefix="/sala-de-guerra")
 
@@ -122,7 +123,7 @@ def index():
         except ValueError:
             periodo = "all"
     inicio = date.today() - timedelta(days=dias - 1) if dias else None
-    query = _scope(db.select(CasoDNR))
+    query = apply_date_filters(_scope(db.select(CasoDNR)))
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
@@ -242,5 +243,5 @@ def index():
         tendencias_login=tendencias_login, tendencias_produto=tendencias_produto,
         procedimentos=procedimentos, bases=bases, base_rows=base_rows,
         reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
-        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls,
+        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls, **date_filter_context(),
     )

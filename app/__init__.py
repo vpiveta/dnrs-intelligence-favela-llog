@@ -140,6 +140,7 @@ def _ensure_production_schema() -> None:
         return
 
     alteracoes = [
+        "ALTER TABLE casos_dnr ADD COLUMN IF NOT EXISTS data_abertura_dnr DATE",
         "ALTER TABLE casos_dnr ALTER COLUMN cliente TYPE VARCHAR(255)",
         "ALTER TABLE casos_dnr ALTER COLUMN endereco TYPE TEXT",
         "ALTER TABLE casos_dnr ALTER COLUMN motorista TYPE VARCHAR(255)",
@@ -191,6 +192,7 @@ def _ensure_local_schema() -> None:
             "longitude": "FLOAT",
             "geocode_status": "VARCHAR(30)",
             "geocodificado_em": "DATETIME",
+            "data_abertura_dnr": "DATE",
             "hora_dnr": "TIME",
             "data_hora_entrega": "DATETIME",
             "semana_numero": "INTEGER",
