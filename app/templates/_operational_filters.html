@@ -1,0 +1,8 @@
+{% macro operational_fields(bases, selected_base, data, weeks, selected_week, years, selected_year, show_base=True) -%}
+  {% if show_base %}
+  <label class="filter-field"><span>Base</span><select name="base_id"><option value="">Todas as bases</option>{% for base in bases %}<option value="{{ base.id }}" {% if selected_base|int == base.id %}selected{% endif %}>{{ base.codigo }}</option>{% endfor %}</select></label>
+  {% endif %}
+  <label class="filter-field"><span>Data de entrega</span><input type="date" name="data" value="{{ data }}"></label>
+  <label class="filter-field"><span>Semana</span><select name="semana"><option value="">Todas as semanas</option>{% for week in weeks %}<option value="{{ week }}" {% if selected_week|int == week %}selected{% endif %}>S{{ '%02d'|format(week) }}</option>{% endfor %}</select></label>
+  <label class="filter-field"><span>Ano</span><select name="ano"><option value="">Todos os anos</option>{% for year in years %}<option value="{{ year }}" {% if selected_year|int == year %}selected{% endif %}>{{ year }}</option>{% endfor %}</select></label>
+{%- endmacro %}

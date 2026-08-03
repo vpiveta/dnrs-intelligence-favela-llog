@@ -1,13 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Sala de Guerra · DNR's Intelligence Favela Llog
-<div class="grid two">
-<section class="panel"><div class="panel-head"><div><h2>Cliente + endereço reincidente</h2><p>O mesmo nome só é considerado reincidente quando aparece no mesmo endereço normalizado.</p></div></div><div class="ranking-list">
-{% for row in reincidentes %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente, endereco=row.endereco) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>{{ row.endereco }}</span></div><b>{{ row.total }} casos</b><small>R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small></a>{% else %}<div class="empty">Nenhum cliente reincidente no mesmo endereço.</div>{% endfor %}
-</div></section>
-<section class="panel"><div class="panel-head"><div><h2>Nomes em endereços diferentes</h2><p>Itens para validação; não são tratados automaticamente como o mesmo cliente.</p></div></div><div class="ranking-list">
-{% for row in nomes_multiplos_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>Ver os endereços associados</span></div><b>{{ row.enderecos }}</b><small>endereços</small></a>{% else %}<div class="empty">Nenhum nome repetido em endereços diferentes.</div>{% endfor %}
-</div></section></div>
-{% endblock %}
+{% from '_operational_filters.html' import operational_fields %}
+{% block title %}Sala de Guerra · DNR's Intelligence Favela Llog{% endblock %}
 {% block content %}
 <div class="page-heading command-heading">
   <div>
@@ -15,19 +8,11 @@
     <h1>Sala de Guerra</h1>
     <p>Prioridades, crescimento, risco e recomendações para orientar a ação do gerente.</p>
   </div>
-  <form class="quick-filters advanced-filters" method="get">
-<select name="date_source"><option value="dnr" {% if date_source=='dnr' %}selected{% endif %}>Data de entrega</option><option value="abertura" {% if date_source=='abertura' %}selected{% endif %}>Data de abertura</option></select><input type="date" name="data" value="{{ data }}" title="Dia exato"><input type="date" name="data_inicio" value="{{ data_inicio }}" title="Data inicial"><input type="date" name="data_fim" value="{{ data_fim }}" title="Data final"><input type="number" min="1" max="53" name="semana" value="{{ semana or '' }}" placeholder="Semana"><input type="number" min="2020" max="2100" name="ano" value="{{ ano_filtro or '' }}" placeholder="Ano"><select name="periodo">
-      {% for n,label in [('all','Todo o período'),(14,'14 dias'),(30,'30 dias'),(60,'60 dias'),(90,'90 dias'),(180,'180 dias')] %}
-      <option value="{{ n }}" {% if periodo|string == n|string %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    {% if current_user.can_view_all_bases %}
-    <select name="base_id" onchange="this.form.submit()">
-      <option value="">Todas as bases</option>
-      {% for base in bases %}<option value="{{ base.id }}" {% if base_id == base.id %}selected{% endif %}>{{ base.codigo }} · {{ base.nome }}</option>{% endfor %}
-    </select>
-    {% endif %}
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('warroom.index') }}">Limpar</a><small class="filter-help">Os filtros usam Data de entrega ou Data de abertura do DNR. O prazo da análise continua sendo 3 dias após o upload.</small></form>
+  <form class="quick-filters advanced-filters unified-filter-bar" method="get">
+    {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('warroom.index') }}">Limpar</a>
+    <small class="filter-help">A consulta usa a data de entrega e somente semanas/anos existentes no banco.</small>
+  </form>
 </div>
 
 {% if current_user.can_view_all_bases and not base_id %}
@@ -35,7 +20,7 @@
   <div class="panel-head"><div><h2>Resumo executivo consolidado</h2><p>Visão geral de todas as bases no período selecionado.</p></div><span class="pill">{{ base_rows|length }} bases</span></div>
   <div class="executive-base-grid">
     {% for row in base_rows %}
-    <a class="executive-base-card" href="{{ url_for('warroom.index', base_id=row.base.id, periodo=periodo) }}">
+    <a class="executive-base-card" href="{{ url_for('warroom.index', base_id=row.base.id, data=data, semana=semana, ano=ano_filtro) }}">
       <div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div>
       <b>{{ row.total }} casos</b><small>{{ row.abertos }} abertos · {{ row.taxa }}% resolvidos · R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small>
     </a>
@@ -47,9 +32,9 @@
 <div class="kpi-grid war-kpis">
   <a class="kpi" href="{{ priority_urls.all }}"><span>Casos no período</span><strong>{{ total }}</strong><small>base da análise</small></a>
   <a class="kpi danger" href="{{ priority_urls.critical }}"><span>Críticos</span><strong>{{ criticos }}</strong><small>R$ 1.000 ou mais</small></a>
-  <a class="kpi warning" href="{{ url_for('cases.index', risk='ALTO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Altos</span><strong>{{ altos }}</strong><small>R$ 500 a R$ 999,99</small></a>
-  <a class="kpi accent" href="{{ url_for('cases.index', risk='MEDIO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Médios</span><strong>{{ medios }}</strong><small>R$ 100 a R$ 499,99</small></a>
-  <a class="kpi success" href="{{ url_for('cases.index', risk='BAIXO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Baixos</span><strong>{{ baixos }}</strong><small>abaixo de R$ 100</small></a>
+  <a class="kpi warning" href="{{ url_for('cases.index', risk='ALTO', base_id=base_id or '', data=data, semana=semana, ano=ano_filtro, next=request.full_path) }}"><span>Altos</span><strong>{{ altos }}</strong><small>R$ 500 a R$ 999,99</small></a>
+  <a class="kpi accent" href="{{ url_for('cases.index', risk='MEDIO', base_id=base_id or '', data=data, semana=semana, ano=ano_filtro, next=request.full_path) }}"><span>Médios</span><strong>{{ medios }}</strong><small>R$ 100 a R$ 499,99</small></a>
+  <a class="kpi success" href="{{ url_for('cases.index', risk='BAIXO', base_id=base_id or '', data=data, semana=semana, ano=ano_filtro, next=request.full_path) }}"><span>Baixos</span><strong>{{ baixos }}</strong><small>abaixo de R$ 100</small></a>
   <a class="kpi danger" href="{{ priority_urls.overdue }}"><span>SLA vencido</span><strong>{{ vencidos }}</strong><small>casos fora do prazo</small></a>
   <a class="kpi warning" href="{{ priority_urls.no_procedure }}"><span>Sem procedimento</span><strong>{{ sem_procedimento }}</strong><small>ação ainda não registrada</small></a>
   <div class="kpi accent"><span>Valor sob risco</span><strong>R$ {{ '%.2f'|format(valor_risco)|replace('.', ',') }}</strong><small>casos altos e críticos</small></div>
@@ -72,7 +57,7 @@
     <div class="panel-head"><div><h2>Comparação por base</h2><p>Volume, pendências e resolução.</p></div></div>
     <div class="base-intelligence">
       {% for row in base_rows %}
-      <a class="base-int-row" href="{{ url_for('warroom.index', base_id=row.base.id, periodo=periodo) }}"><div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div><div><b>{{ row.total }}</b><small>casos</small></div><div><b>{{ row.abertos }}</b><small>abertos</small></div><div><b>{{ row.taxa }}%</b><small>resolução</small></div></a>
+      <a class="base-int-row" href="{{ url_for('warroom.index', base_id=row.base.id, data=data, semana=semana, ano=ano_filtro) }}"><div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div><div><b>{{ row.total }}</b><small>casos</small></div><div><b>{{ row.abertos }}</b><small>abertos</small></div><div><b>{{ row.taxa }}%</b><small>resolução</small></div></a>
       {% else %}<div class="empty">Nenhum dado no período.</div>{% endfor %}
     </div>
   </section>
@@ -114,9 +99,9 @@
 
 <div class="grid two">
 <section class="panel"><div class="panel-head"><div><h2>Cliente + endereço reincidente</h2><p>O mesmo nome só é considerado reincidente quando aparece no mesmo endereço normalizado.</p></div></div><div class="ranking-list">
-{% for row in reincidentes %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente, endereco=row.endereco) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>{{ row.endereco }}</span></div><b>{{ row.total }} casos</b><small>R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small></a>{% else %}<div class="empty">Nenhum cliente reincidente no mesmo endereço.</div>{% endfor %}
+{% for row in reincidentes %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base.id, data=data, semana=semana, ano=ano_filtro, next=request.full_path) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>{{ row.endereco }}</span></div><b>{{ row.total }} casos</b><small>R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small></a>{% else %}<div class="empty">Nenhum cliente reincidente no mesmo endereço.</div>{% endfor %}
 </div></section>
 <section class="panel"><div class="panel-head"><div><h2>Nomes em endereços diferentes</h2><p>Itens para validação; não são tratados automaticamente como o mesmo cliente.</p></div></div><div class="ranking-list">
-{% for row in nomes_multiplos_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>Ver os endereços associados</span></div><b>{{ row.enderecos }}</b><small>endereços</small></a>{% else %}<div class="empty">Nenhum nome repetido em endereços diferentes.</div>{% endfor %}
+{% for row in nomes_multiplos_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente, base_id=row.base.id, data=data, semana=semana, ano=ano_filtro, next=request.full_path) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>Ver os endereços associados</span></div><b>{{ row.enderecos }}</b><small>endereços</small></a>{% else %}<div class="empty">Nenhum nome repetido em endereços diferentes.</div>{% endfor %}
 </div></section></div>
 {% endblock %}

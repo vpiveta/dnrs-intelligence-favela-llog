@@ -264,3 +264,14 @@ td small.muted{display:block;margin-top:.25rem}
   .delete-dialog form{padding:20px!important}
   .delete-dialog .dialog-actions{grid-template-columns:1fr}
 }
+
+/* Enterprise 2.0 Final — filtros operacionais unificados */
+.unified-filter-bar{display:grid!important;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;align-items:end;width:100%}
+.unified-filter-bar .filter-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.unified-filter-bar .filter-field.wide{grid-column:span 2}
+.unified-filter-bar .filter-field>span{font-size:.76rem;font-weight:700;color:var(--muted,#8fa4c2);letter-spacing:.02em}
+.unified-filter-bar .filter-field input,.unified-filter-bar .filter-field select{width:100%;min-width:0;height:42px}
+.unified-filter-bar .filter-help{grid-column:1/-1}
+.heading-actions .unified-filter-bar{min-width:min(760px,70vw)}
+@media(max-width:1100px){.unified-filter-bar{grid-template-columns:repeat(2,minmax(150px,1fr))}.heading-actions{width:100%;align-items:stretch}.heading-actions .unified-filter-bar{min-width:0}}
+@media(max-width:640px){.unified-filter-bar{grid-template-columns:1fr}.unified-filter-bar .filter-field.wide{grid-column:auto}}

@@ -11,7 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import critical_context, is_overdue, sla_date, value_risk_level, value_risk_reason
 from app.core.identity import client_address_key, normalize_address, normalize_text
-from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
 
 bp = Blueprint("warroom", __name__, url_prefix="/sala-de-guerra")
 
@@ -115,20 +115,11 @@ def _procedure_rows(casos: list[CasoDNR]):
 @login_required
 def index():
     base_id = request.args.get("base_id", type=int)
-    periodo = request.args.get("periodo", "all")
-    dias = None
-    if periodo != "all":
-        try:
-            dias = max(14, min(int(periodo), 730))
-        except ValueError:
-            periodo = "all"
-    inicio = date.today() - timedelta(days=dias - 1) if dias else None
+    periodo = "all"
     query = apply_date_filters(_scope(db.select(CasoDNR)))
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
-    if inicio:
-        casos = [c for c in casos if _case_date(c) >= inicio]
 
     # Reincidência confiável: cliente é avaliado junto ao endereço normalizado.
     cliente_endereco = Counter(client_address_key(c.cliente, c.endereco) for c in casos if _clean(c.cliente) and _clean(c.endereco))
@@ -173,9 +164,10 @@ def index():
         client_norm, address_norm = client_address_key(c.cliente, c.endereco)
         if client_norm and address_norm:
             key = (c.base_id, client_norm, address_norm)
-            row = recurrence_map.setdefault(key, {"base": c.base, "cliente": c.cliente, "endereco": c.endereco, "total": 0, "valor": Decimal("0")})
+            row = recurrence_map.setdefault(key, {"base": c.base, "cliente": c.cliente, "endereco": c.endereco, "total": 0, "valor": Decimal("0"), "case_ids": []})
             row["total"] += 1
             row["valor"] += Decimal(c.valor or 0)
+            row["case_ids"].append(c.id)
             client_addresses[(c.base_id, client_norm)].add(address_norm)
             labels[(c.base_id, client_norm)] = (c.base, c.cliente)
     reincidentes = sorted((r for r in recurrence_map.values() if r["total"] > 1), key=lambda r: (r["total"], r["valor"]), reverse=True)[:12]
@@ -206,7 +198,7 @@ def index():
         alertas.append({"tipo": "success", "titulo": "Nenhum alerta crítico", "texto": "A operação não possui sinais críticos suficientes no período selecionado.", "acao": "Ver casos", "url": "cases.index", "params": ""})
 
     origin = request.full_path.rstrip("?")
-    common_filters = {"periodo": periodo, "period_source": "dnr", "next": origin}
+    common_filters = active_filter_params(); common_filters["next"] = origin
     if base_id:
         common_filters["base_id"] = base_id
     priority_urls = {
@@ -243,5 +235,5 @@ def index():
         tendencias_login=tendencias_login, tendencias_produto=tendencias_produto,
         procedimentos=procedimentos, bases=bases, base_rows=base_rows,
         reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
-        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls, **date_filter_context(),
+        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls, active_filters=active_filter_params(), **date_filter_context(),
     )

@@ -11,7 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import is_overdue, value_risk_level
 from app.core.identity import abbreviate_person
-from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
 
 bp = Blueprint("analytics", __name__, url_prefix="/analytics")
 CONCLUIDOS = {"RESOLVIDO", "ENCERRADO", "CONCLUIDO"}
@@ -159,18 +159,9 @@ def _opportunities(casos, base_labels, consolidated):
 @bp.route("/")
 @login_required
 def index():
-    periodo = request.args.get("periodo", "all")
+    periodo = "all"
     base_id = request.args.get("base_id", type=int)
-    dias = None
-    if periodo != "all":
-        try:
-            dias = max(7, min(int(periodo), 730))
-        except ValueError:
-            periodo = "all"
     query = apply_date_filters(_visible_query())
-    if dias:
-        inicio = datetime.now(timezone.utc) - timedelta(days=dias)
-        query = query.where(CasoDNR.criado_em >= inicio)
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.asc())).all()
@@ -256,7 +247,10 @@ def index():
         if item["tipo"] == "CEP4":
             item["url"] = url_for("geo.index", cep4=item["filter"], base_id=item["base_id"])
         else:
-            params = {"base_id": item["base_id"], "next": request.full_path}
+            params = active_filter_params()
+            if item["base_id"]:
+                params["base_id"] = item["base_id"]
+            params["next"] = request.full_path
             params[param_by_type.get(item["tipo"], "q")] = item["filter"]
             item["url"] = url_for("cases.index", **params)
 
@@ -293,5 +287,5 @@ def index():
         vencidos=len(overdue_cases), valor_total=valor_total, cep4_critico=cep4_critico,
         chart_data=chart_data, base_rows=base_rows,
         comparison=comparison[:30], period_info=period_info, opportunities=opportunities,
-        consolidated=consolidated, **date_filter_context(),
+        consolidated=consolidated, active_filters=active_filter_params(), **date_filter_context(),
     )

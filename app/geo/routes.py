@@ -148,8 +148,10 @@ def index():
     query = _apply_filters(_visible_query())
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
     mapeados = [c for c in casos if c.latitude is not None and c.longitude is not None]
+    exatos = [c for c in mapeados if (c.geocode_status or "") not in {"CEP_APROXIMADO", "CEP4_APROXIMADO"}]
+    aproximados = [c for c in mapeados if (c.geocode_status or "") in {"CEP_APROXIMADO", "CEP4_APROXIMADO"}]
     pendentes = [c for c in casos if c.endereco and (c.latitude is None or c.longitude is None)]
-    visualizaveis = [c for c in casos if c.endereco]
+    visualizaveis = mapeados
     bases = db.session.scalars(
         db.select(BaseOperacional)
         .where(BaseOperacional.ativa.is_(True))
@@ -181,8 +183,11 @@ def index():
         "geo/index.html",
         casos=casos,
         mapeados=mapeados,
+        exatos=exatos,
+        aproximados=aproximados,
         visualizaveis=visualizaveis,
         pendentes=pendentes,
+        auto_geocode=bool(not mapeados and pendentes),
         bases=bases,
         motoristas=motoristas,
         logins=logins,
@@ -356,16 +361,17 @@ def _cep_lookup(cep: str) -> tuple[float, float] | None:
 def _geocode(caso: CasoDNR) -> tuple[float, float, str] | None:
     # Reutiliza coordenadas já validadas do mesmo endereço antes de consultar a internet.
     if caso.endereco:
-        cached = db.session.scalar(
+        candidates = db.session.scalars(
             db.select(CasoDNR).where(
                 CasoDNR.id != caso.id,
                 CasoDNR.base_id == caso.base_id,
-                CasoDNR.endereco == caso.endereco,
                 CasoDNR.cep == caso.cep,
                 CasoDNR.latitude.is_not(None),
                 CasoDNR.longitude.is_not(None),
-            ).limit(1)
-        )
+            ).limit(30)
+        ).all()
+        wanted = normalize_address(caso.endereco)
+        cached = next((item for item in candidates if normalize_address(item.endereco) == wanted), None)
         if cached:
             return cached.latitude, cached.longitude, "CACHE_ENDERECO"
 
@@ -379,7 +385,7 @@ def _geocode(caso: CasoDNR) -> tuple[float, float, str] | None:
     expected_city = via.get("cidade") or (caso.base.cidade if caso.base else "")
     expected_uf = via.get("uf") or "SP"
     # Tenta até três formatos e só aceita resultado compatível com CEP/cidade/UF.
-    for candidate in _address_candidates(caso)[:3]:
+    for candidate in _address_candidates(caso)[:8]:
         try:
             coords = _nominatim_lookup(candidate, cep, expected_city, expected_uf)
             if coords:

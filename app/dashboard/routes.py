@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from decimal import Decimal
 
 from flask import Blueprint, render_template, request, url_for
@@ -12,6 +12,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level, is_overdue
 from app.core.identity import client_address_key, normalize_address
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
 
 bp = Blueprint("dashboard", __name__)
 
@@ -25,23 +26,16 @@ def _scope(query):
 @bp.route("/")
 @login_required
 def index():
-    query = _scope(db.select(CasoDNR))
+    query = apply_date_filters(_scope(db.select(CasoDNR)))
     base_id = request.args.get("base_id", type=int)
-    periodo = request.args.get("periodo", "30")
-    if base_id and (current_user.can_view_all_bases):
+    if base_id and current_user.can_view_all_bases:
         query = query.where(CasoDNR.base_id == base_id)
-    try:
-        dias = max(1, min(int(periodo), 365))
-    except ValueError:
-        dias = 30
-    inicio = datetime.now(timezone.utc) - timedelta(days=dias)
-    query = query.where(CasoDNR.criado_em >= inicio)
-    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
+    casos = db.session.scalars(query.order_by(CasoDNR.data_dnr.desc(), CasoDNR.criado_em.desc())).all()
 
     hoje = date.today()
     total = len(casos)
     pendentes_status = {"PENDENTE", "EM_ANALISE", "AGUARDANDO", "AGUARDANDO_RETORNO"}
-    concluidos_status = {"RESOLVIDO", "ENCERRADO"}
+    concluidos_status = {"RESOLVIDO", "ENCERRADO", "CONCLUIDO"}
     pendentes = sum(c.status in pendentes_status for c in casos)
     criticos = sum(value_risk_level(c.valor) == "CRITICO" for c in casos)
     concluidos = sum(c.status in concluidos_status for c in casos)
@@ -87,40 +81,29 @@ def index():
     comparativo.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
     maior_base = comparativo[0] if comparativo else None
 
-    # Cards semanais por base. A combinação Base + Semana é independente e
-    # respeita o escopo atual (todas as bases ou uma base específica).
+    # Cada card abre o Analytics já isolado por base, semana e ano.
     base_by_id = {b.id: b for b in bases}
     weekly_counter = Counter(
         (c.base_id, c.ano or (c.data_dnr.year if c.data_dnr else None), c.semana_numero)
-        for c in casos
-        if c.semana_numero
+        for c in casos if c.semana_numero
     )
     weekly_cards = []
     for (card_base_id, card_year, week_number), total_week in weekly_counter.items():
         base_obj = base_by_id.get(card_base_id) or db.session.get(BaseOperacional, card_base_id)
         if not base_obj:
             continue
-        params = {
-            "base_id": card_base_id,
-            "semana": week_number,
-            "date_source": "dnr",
-            "next": request.full_path.rstrip("?"),
-        }
+        params = {"base_id": card_base_id, "semana": week_number}
         if card_year:
             params["ano"] = card_year
         weekly_cards.append({
-            "base": base_obj,
-            "semana": week_number,
-            "ano": card_year,
-            "total": total_week,
-            "url": url_for("cases.index", **params),
+            "base": base_obj, "semana": week_number, "ano": card_year,
+            "total": total_week, "url": url_for("analytics.index", **params),
         })
     weekly_cards.sort(key=lambda item: (item["ano"] or 0, item["semana"], item["base"].codigo), reverse=True)
 
     origin = request.full_path.rstrip("?")
-    common = {"periodo": dias, "period_source": "created", "next": origin}
-    if base_id:
-        common["base_id"] = base_id
+    common = active_filter_params()
+    common["next"] = origin
     prioridades = [
         {"tipo": "danger", "icone": "!", "titulo": f"{vencidos} casos vencidos", "texto": "Prazo expirado e caso ainda aberto", "url": url_for("cases.index", view="overdue", **common)},
         {"tipo": "danger", "icone": "◆", "titulo": f"{criticos} casos críticos", "texto": "Produtos de R$ 1.000,00 ou mais", "url": url_for("cases.index", view="critical", **common)},
@@ -134,6 +117,6 @@ def index():
         "dashboard/index.html", total=total, pendentes=pendentes, criticos=criticos,
         concluidos=concluidos, concluidos_hoje=concluidos_hoje, valor=valor,
         taxa=taxa, prioridades=prioridades, casos=casos[:8], bases=bases,
-        comparativo=comparativo, periodo=dias, base_id=base_id, maior_base=maior_base,
-        weekly_cards=weekly_cards,
+        comparativo=comparativo, base_id=base_id, maior_base=maior_base,
+        weekly_cards=weekly_cards, **date_filter_context(),
     )
