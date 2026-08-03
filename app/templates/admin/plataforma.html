@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Plataforma | DNR's Intelligence Favela Llog{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><span class="eyebrow">Administração</span><h1>Saúde da Plataforma</h1><p>Diagnóstico seguro do ambiente, banco e publicação.</p></div>
+  <a class="btn secondary" href="{{ url_for('admin.plataforma') }}">Atualizar diagnóstico</a>
+</div>
+
+<div class="kpi-grid">
+  <article class="kpi"><span>Ambiente</span><strong>{{ health.environment }}</strong><small>{{ health.render.service }}</small></article>
+  <article class="kpi"><span>Banco</span><strong>{{ health.database.backend }}</strong><small>{{ health.database.host }}</small></article>
+  <article class="kpi"><span>Conexão</span><strong>{{ 'Online' if health.database_ok else 'Falha' }}</strong><small>{{ health.table_count }} tabelas</small></article>
+  <article class="kpi"><span>Versão</span><strong>{{ health.version }}</strong><small>Projeto único Enterprise</small></article>
+</div>
+
+<div class="dashboard-grid">
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">Banco central</span><h2>Dados disponíveis</h2></div></div>
+    {% if health.database_error %}<div class="alert danger">{{ health.database_error }}</div>{% endif %}
+    <div class="table-wrap"><table><thead><tr><th>Tabela</th><th>Registros</th></tr></thead><tbody>
+      {% for table, total in health.counts.items() %}<tr><td>{{ table }}</td><td>{{ total }}</td></tr>{% else %}<tr><td colspan="2">Nenhum dado encontrado.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><div><span class="eyebrow">Publicação</span><h2>GitHub → Render → Supabase</h2></div></div>
+    <div class="info-list">
+      <div><span>Repositório</span><strong>{{ health.github.repository }}</strong></div>
+      <div><span>Aplicação</span><strong>{{ health.render.url }}</strong></div>
+      <div><span>Banco</span><strong>{{ health.database.database }}</strong></div>
+      <div><span>Último backup local</span><strong>{{ health.last_backup.nome if health.last_backup else 'Ainda não criado' }}</strong></div>
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><div><span class="eyebrow">Fluxo oficial</span><h2>Como atualizar a aplicação</h2></div></div>
+  <div class="steps-grid">
+    <div class="step"><b>1</b><span>Altere e teste o projeto local.</span></div>
+    <div class="step"><b>2</b><span>Execute <code>ATUALIZAR_GITHUB.bat</code>.</span></div>
+    <div class="step"><b>3</b><span>O Render publica automaticamente.</span></div>
+    <div class="step"><b>4</b><span>O Supabase mantém o banco intacto.</span></div>
+  </div>
+  <p class="muted">Banco, uploads, backups e segredos não são enviados ao GitHub. Apenas o código e a estrutura do projeto são versionados.</p>
+</section>
+{% endblock %}

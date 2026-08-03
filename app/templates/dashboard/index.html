@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Central de Comando · DNR's Intelligence Favela Llog{% endblock %}
+{% block content %}
+<div class="page-heading command-heading">
+  <div><span class="eyebrow">DNR Intelligence</span><h1>Central de Comando</h1><p>Olá, {{ current_user.nome.split()[0] }}. Veja o que precisa de atenção agora.</p></div>
+  <div class="heading-actions">
+    <form class="quick-filters" method="get">
+      {% if current_user.can_view_all_bases %}<select name="base_id" onchange="this.form.submit()"><option value="">Todas as bases</option>{% for base in bases %}<option value="{{ base.id }}" {% if base_id == base.id %}selected{% endif %}>{{ base.codigo }}</option>{% endfor %}</select>{% endif %}
+      <select name="periodo" onchange="this.form.submit()"><option value="7" {% if periodo==7 %}selected{% endif %}>7 dias</option><option value="30" {% if periodo==30 %}selected{% endif %}>30 dias</option><option value="90" {% if periodo==90 %}selected{% endif %}>90 dias</option><option value="365" {% if periodo==365 %}selected{% endif %}>12 meses</option></select>
+    </form>
+    <a class="btn primary" href="{{ url_for('cases.novo') }}">+ Novo caso</a>
+  </div>
+</div>
+
+<div class="kpi-grid executive-kpis">
+  <a class="kpi" href="{{ url_for('cases.index') }}"><span>Total no período</span><strong>{{ total }}</strong><small>casos monitorados</small></a>
+  <a class="kpi warning" href="{{ url_for('cases.index', status='PENDENTE') }}"><span>Pendentes</span><strong>{{ pendentes }}</strong><small>exigem acompanhamento</small></a>
+  <a class="kpi danger" href="{{ url_for('cases.index', prioridade='CRITICA') }}"><span>Críticos</span><strong>{{ criticos }}</strong><small>prioridade máxima</small></a>
+  <a class="kpi success" href="{{ url_for('cases.index', status='RESOLVIDO') }}"><span>Concluídos</span><strong>{{ concluidos }}</strong><small>{{ concluidos_hoje }} finalizados hoje</small></a>
+  <div class="kpi accent"><span>Valor em análise</span><strong>R$ {{ '{:,.2f}'.format(valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</strong><small>impacto financeiro</small></div>
+</div>
+
+<div class="dashboard-grid command-grid">
+  <section class="panel priorities-panel">
+    <div class="panel-head"><div><h2>Fila de prioridades</h2><p>Ordenada pelo impacto e urgência.</p></div><span class="live-label"><i></i> atualizado</span></div>
+    <div class="action-grid">
+      {% for item in prioridades %}
+      <a class="action-card {{ item.tipo }}" href="{{ url_for('cases.index') }}{% if item.filtro %}?{{ item.filtro }}{% endif %}">
+        <div class="action-icon">{{ item.icone }}</div><div><strong>{{ item.titulo }}</strong><span>{{ item.texto }}</span></div><b>›</b>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="panel operation-score">
+    <div class="panel-head"><div><h2>Saúde da operação</h2><p>Taxa de casos concluídos no período.</p></div></div>
+    <div class="health health-large"><div class="ring" style="--value:{{ taxa }}"><span>{{ taxa }}%</span></div><div><strong>{% if taxa >= 80 %}Operação saudável{% elif taxa >= 50 %}Atenção necessária{% else %}Ação imediata{% endif %}</strong><p>{{ concluidos }} de {{ total }} casos estão resolvidos ou encerrados.</p><div class="mini-stat"><span>Meta recomendada</span><b>≥ 80%</b></div></div></div>
+  </section>
+</div>
+
+<div class="dashboard-grid lower-grid">
+  <section class="panel">
+    <div class="panel-head"><div><h2>Comparativo entre bases</h2><p>Volume relativo de casos no período selecionado.</p></div></div>
+    <div class="base-ranking">{% for item in comparativo %}<a href="{{ url_for('dashboard.index', base_id=item.base.id, periodo=periodo) }}" class="base-row detailed"><div><strong>{{ item.base.codigo }}</strong><span>{{ item.base.nome }}</span></div><div class="bar"><i style="width:{{ item.percentual }}%"></i></div><div class="base-metrics"><b>{{ item.total }}</b><small>{{ item.criticos }} críticos · {{ item.vencidos }} vencidos · {{ item.taxa }}% resolvidos</small></div></a>{% endfor %}</div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Resumo executivo</h2><p>Leitura rápida para tomada de decisão.</p></div></div>
+    <div class="insight-box"><span>Inteligência DNR</span>
+      {% if current_user.can_view_all_bases and not base_id %}
+      <strong>Consolidado de {{ comparativo|length }} bases: {{ total }} casos, {{ criticos }} críticos, {{ pendentes }} pendentes e R$ {{ '{:,.2f}'.format(valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }} em análise.</strong>
+      <p>{% if maior_base %}A base com maior volume é <b>{{ maior_base.base.codigo }}</b>, com {{ maior_base.total }} casos, {{ maior_base.criticos }} críticos e {{ maior_base.taxa }}% de resolução.{% else %}Ainda não há dados importados nas bases.{% endif %}</p>
+      {% else %}
+      <strong>{% if criticos > 0 %}A base selecionada possui {{ criticos }} casos críticos que devem ser priorizados.{% elif pendentes > 0 %}A base está sem casos críticos, mas ainda possui {{ pendentes }} pendências.{% else %}Não existem pendências no período selecionado.{% endif %}</strong>
+      <p>{{ concluidos }} casos concluídos, taxa de resolução de {{ taxa }}% e R$ {{ '{:,.2f}'.format(valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }} analisados.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Casos recentes</h2><p>Últimos registros disponíveis no seu escopo.</p></div><a class="btn ghost" href="{{ url_for('cases.index') }}">Ver todos</a></div>
+  {% if casos %}<div class="table-wrap"><table><thead><tr><th>Caso</th><th>TBR</th><th>Cliente</th><th>Base</th><th>Status</th><th>Prioridade</th><th></th></tr></thead><tbody>{% for caso in casos %}<tr><td><strong>{{ caso.codigo }}</strong></td><td>{{ caso.tbr }}</td><td>{{ caso.cliente }}</td><td>{{ caso.base.codigo }}</td><td><span class="badge status-{{ caso.status|lower }}">{{ caso.status|replace('_',' ') }}</span></td><td><span class="badge priority-{{ caso.prioridade|lower }}">{{ caso.prioridade }}</span></td><td><a class="row-link" href="{{ url_for('cases.detalhe', caso_id=caso.id, next=request.full_path) }}">Abrir ›</a></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty"><div>◌</div><h3>Nenhum caso cadastrado</h3><p>Cadastre o primeiro caso para alimentar a Central de Comando.</p><a class="btn primary" href="{{ url_for('cases.novo') }}">Criar primeiro caso</a></div>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DNR's Intelligence Favela Llog{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favela_llog_logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand brand-image" href="{{ url_for('dashboard.index') }}">
+      <img src="{{ url_for('static', filename='img/favela_llog_logo.png') }}" alt="Favela Llog">
+      <div><strong>DNR's Intelligence</strong><span>Favela Llog</span></div>
+    </a>
+    <nav>
+      <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">⌂ <span>Central de Comando</span></a>
+      <a class="nav-link {% if request.blueprint == 'cases' %}active{% endif %}" href="{{ url_for('cases.index') }}">▣ <span>Casos</span></a>
+      <a class="nav-link {% if request.blueprint == 'imports' %}active{% endif %}" href="{{ url_for('imports.index') }}">⇩ <span>Importações</span></a>
+      <a class="nav-link {% if request.blueprint == 'cases' and request.endpoint == 'cases.detalhe' %}active{% endif %}" href="{{ url_for('cases.index') }}">⌕ <span>Investigação</span></a>
+      <a class="nav-link {% if request.blueprint == 'warroom' %}active{% endif %}" href="{{ url_for('warroom.index') }}">⚠ <span>Sala de Guerra</span></a>
+      <a class="nav-link {% if request.blueprint == 'intelligence' %}active{% endif %}" href="{{ url_for('intelligence.index') }}">◫ <span>Inteligência</span></a>
+      <a class="nav-link {% if request.blueprint == 'analytics' %}active{% endif %}" href="{{ url_for('analytics.index') }}">▥ <span>Gráficos e Análises</span></a>
+      <a class="nav-link {% if request.blueprint == 'geo' %}active{% endif %}" href="{{ url_for('geo.index') }}">⌖ <span>GEO Intelligence</span></a>
+      {% if current_user.is_admin %}
+      <div class="nav-section">Administração</div>
+      <a class="nav-link {% if request.endpoint == 'admin.bases' %}active{% endif %}" href="{{ url_for('admin.bases') }}">◇ <span>Bases</span></a>
+      <a class="nav-link {% if request.endpoint == 'admin.usuarios' %}active{% endif %}" href="{{ url_for('admin.usuarios') }}">◎ <span>Usuários</span></a>
+      <a class="nav-link {% if request.endpoint == 'admin.plataforma' %}active{% endif %}" href="{{ url_for('admin.plataforma') }}">⚙ <span>Plataforma</span></a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-user"><div class="avatar">{{ current_user.nome[:1] }}</div><div><strong>{{ current_user.nome }}</strong><span>{{ current_user.perfil }} · {{ current_user.base_scope_label }}</span></div><a href="{{ url_for('auth.logout') }}" title="Sair">↗</a></div>
+  </aside>
+  <main class="content">
+    <header class="topbar"><button class="icon-btn" id="menuBtn">☰</button><form class="global-search" action="{{ url_for('cases.index') }}" method="get">⌕ <input name="q" placeholder="Buscar TBR, cliente, endereço..."></form><div class="top-actions"><span class="status-dot"></span> DNR's Intelligence Favela Llog</div></header>
+    <section class="page">
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</div>
+{% else %}{% block public_content %}{% endblock %}{% endif %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts_extra %}{% endblock %}
+</body>
+</html>

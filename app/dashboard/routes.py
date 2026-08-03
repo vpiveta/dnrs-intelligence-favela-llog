@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+from collections import Counter
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+
+from flask import Blueprint, render_template, request
+from flask_login import current_user, login_required
+from sqlalchemy import or_
+
+from app.extensions import db
+from app.models import BaseOperacional, CasoDNR
+from app.core.operational_rules import value_risk_level, is_overdue
+
+bp = Blueprint("dashboard", __name__)
+
+
+def _scope(query):
+    if not current_user.can_view_all_bases:
+        query = query.where(CasoDNR.base_id == current_user.base_id)
+    return query
+
+
+@bp.route("/")
+@login_required
+def index():
+    query = _scope(db.select(CasoDNR))
+    base_id = request.args.get("base_id", type=int)
+    periodo = request.args.get("periodo", "30")
+    if base_id and (current_user.can_view_all_bases):
+        query = query.where(CasoDNR.base_id == base_id)
+    try:
+        dias = max(1, min(int(periodo), 365))
+    except ValueError:
+        dias = 30
+    inicio = datetime.now(timezone.utc) - timedelta(days=dias)
+    query = query.where(CasoDNR.criado_em >= inicio)
+    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
+
+    hoje = date.today()
+    total = len(casos)
+    pendentes_status = {"PENDENTE", "EM_ANALISE", "AGUARDANDO", "AGUARDANDO_RETORNO"}
+    concluidos_status = {"RESOLVIDO", "ENCERRADO"}
+    pendentes = sum(c.status in pendentes_status for c in casos)
+    criticos = sum(value_risk_level(c.valor) == "CRITICO" for c in casos)
+    concluidos = sum(c.status in concluidos_status for c in casos)
+    concluidos_hoje = sum(c.status in concluidos_status and c.atualizado_em.date() == hoje for c in casos)
+    sem_procedimento = sum(not (c.procedimento or "").strip() for c in casos if c.status not in concluidos_status)
+    vencidos = sum(is_overdue(c, hoje) for c in casos)
+    aguardando = sum(c.status in {"AGUARDANDO", "AGUARDANDO_RETORNO"} for c in casos)
+    valor = sum((Decimal(c.valor or 0) for c in casos), Decimal("0"))
+    taxa = round((concluidos / total) * 100) if total else 0
+
+    cliente_counts = Counter((c.cliente or "").strip().casefold() for c in casos if c.cliente)
+    endereco_counts = Counter((c.endereco or "").strip().casefold() for c in casos if c.endereco)
+    clientes_reincidentes = sum(1 for n in cliente_counts.values() if n > 1)
+    enderecos_reincidentes = sum(1 for n in endereco_counts.values() if n > 1)
+
+    bases = db.session.scalars(db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)).all()
+    if not current_user.can_view_all_bases:
+        bases = [current_user.base]
+    base_totais = Counter(c.base_id for c in casos)
+    maior = max(base_totais.values(), default=1)
+    comparativo = []
+    for b in bases:
+        items = [c for c in casos if c.base_id == b.id]
+        total_base = len(items)
+        concluidos_base = sum(c.status in concluidos_status for c in items)
+        criticos_base = sum(value_risk_level(c.valor) == "CRITICO" for c in items)
+        vencidos_base = sum(is_overdue(c, hoje) for c in items)
+        valor_base = sum((Decimal(c.valor or 0) for c in items), Decimal("0"))
+        comparativo.append({
+            "base": b, "total": total_base,
+            "percentual": round(total_base / maior * 100) if maior else 0,
+            "concluidos": concluidos_base,
+            "taxa": round(concluidos_base / total_base * 100) if total_base else 0,
+            "criticos": criticos_base, "vencidos": vencidos_base, "valor": valor_base,
+        })
+    comparativo.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
+    maior_base = comparativo[0] if comparativo else None
+
+    prioridades = [
+        {"tipo": "danger", "icone": "!", "titulo": f"{vencidos} casos vencidos", "texto": "Prazo expirado e caso ainda aberto", "filtro": "status=PENDENTE"},
+        {"tipo": "danger", "icone": "◆", "titulo": f"{criticos} casos críticos", "texto": "Produtos de R$ 1.000,00 ou mais", "filtro": "prioridade=CRITICA"},
+        {"tipo": "warning", "icone": "↻", "titulo": f"{aguardando} aguardando retorno", "texto": "Casos dependentes de resposta ou validação", "filtro": "status=AGUARDANDO_RETORNO"},
+        {"tipo": "warning", "icone": "□", "titulo": f"{sem_procedimento} sem procedimento", "texto": "Defina a próxima ação operacional", "filtro": ""},
+        {"tipo": "info", "icone": "◎", "titulo": f"{clientes_reincidentes} clientes reincidentes", "texto": "Clientes com mais de uma ocorrência no período", "filtro": ""},
+        {"tipo": "info", "icone": "⌖", "titulo": f"{enderecos_reincidentes} endereços reincidentes", "texto": "Locais que exigem investigação", "filtro": ""},
+    ]
+
+    return render_template(
+        "dashboard/index.html", total=total, pendentes=pendentes, criticos=criticos,
+        concluidos=concluidos, concluidos_hoje=concluidos_hoje, valor=valor,
+        taxa=taxa, prioridades=prioridades, casos=casos[:8], bases=bases,
+        comparativo=comparativo, periodo=dias, base_id=base_id, maior_base=maior_base,
+    )

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Inteligência Operacional · DNR's Intelligence Favela Llog{% endblock %}
+{% block content %}
+<div class="page-heading command-heading">
+  <div><span class="eyebrow">Fase 4</span><h1>Inteligência Operacional</h1><p>Reincidências, risco, eficiência dos procedimentos e comparação entre bases.</p></div>
+  <form class="quick-filters" method="get">
+    {% if current_user.can_view_all_bases %}<select name="base_id" onchange="this.form.submit()"><option value="">Todas as bases</option>{% for b in bases %}<option value="{{ b.id }}" {% if base_id == b.id %}selected{% endif %}>{{ b.codigo }}</option>{% endfor %}</select>{% endif %}
+    <select name="periodo" onchange="this.form.submit()"><option value="7" {% if periodo==7 %}selected{% endif %}>7 dias</option><option value="30" {% if periodo==30 %}selected{% endif %}>30 dias</option><option value="90" {% if periodo==90 %}selected{% endif %}>90 dias</option><option value="365" {% if periodo==365 %}selected{% endif %}>12 meses</option></select>
+  </form>
+</div>
+
+<div class="kpi-grid executive-kpis">
+  <div class="kpi"><span>Casos analisados</span><strong>{{ total }}</strong><small>no período</small></div>
+  <div class="kpi success"><span>Taxa de resolução</span><strong>{{ taxa_resolucao }}%</strong><small>resolvidos ou encerrados</small></div>
+  <div class="kpi danger"><span>Risco crítico</span><strong>{{ criticos }}</strong><small>score igual ou acima de 75</small></div>
+  <div class="kpi warning"><span>Clientes reincidentes</span><strong>{{ reinc_clientes }}</strong><small>mais de uma ocorrência</small></div>
+  <div class="kpi warning"><span>Endereços reincidentes</span><strong>{{ reinc_enderecos }}</strong><small>mais de uma ocorrência</small></div>
+</div>
+
+<div class="grid intelligence-grid">
+  <section class="panel insight-panel"><div class="panel-head"><div><h2>Sala de Situação</h2><p>Recomendações automáticas com base nos dados atuais.</p></div></div><div class="insight-list">{% for item in insights %}<div class="smart-insight {{ item.tipo }}"><span>{{ item.titulo }}</span><strong>{{ item.texto }}</strong><small>Recomendação: {{ item.acao }}</small></div>{% endfor %}</div></section>
+  <section class="panel"><div class="panel-head"><div><h2>Valor sob risco</h2><p>Casos classificados como alto ou crítico.</p></div></div><div class="risk-value">R$ {{ '{:,.2f}'.format(valor_risco)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</div><div class="risk-legend"><span><i class="critical"></i> Crítico</span><span><i class="high"></i> Alto</span><span><i class="medium"></i> Médio</span><span><i class="low"></i> Baixo</span></div></section>
+</div>
+
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><h2>Casos com maior score</h2><p>Priorização automática por valor, reincidência, prazo e tratativa.</p></div></div><div class="score-list">{% for item in casos %}<a class="score-row" href="{{ url_for('cases.detalhe', caso_id=item.caso.id, next=request.full_path) }}"><div class="score-ring level-{{ item.nivel|lower }}">{{ item.score }}</div><div><strong>{{ item.caso.codigo }} · {{ item.caso.tbr }}</strong><span>{{ item.caso.cliente }} · {{ item.caso.base.codigo }}</span></div><span class="badge priority-{{ item.nivel|lower }}">{{ item.nivel }}</span></a>{% else %}<div class="empty">Nenhum caso no período.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Comparação entre bases</h2><p>Volume, pendências e taxa de resolução.</p></div></div><div class="base-intelligence">{% for row in base_stats %}<div class="base-int-row"><div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div><div><b>{{ row.total }}</b><small>casos</small></div><div><b>{{ row.pendentes }}</b><small>abertos</small></div><div><b>{{ row.taxa }}%</b><small>resolução</small></div></div>{% else %}<div class="empty">Sem dados.</div>{% endfor %}</div></section>
+</div>
+
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><h2>Clientes reincidentes</h2><p>Maior recorrência e impacto financeiro.</p></div></div>{% include 'intelligence/ranking.html' with context %}</section>
+<section class="panel"><div class="panel-head"><div><h2>Endereços reincidentes</h2><p>Locais que exigem investigação operacional.</p></div></div><div class="ranking-list">{% for row in top_enderecos %}<div class="ranking-row"><div><strong><a class="inline-map-link" href="{{ url_for('geo.index', q=row.nome) }}">{{ row.nome }}</a></strong><span>{{ row.abertos }} em aberto · abrir no mapa</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+</div>
+
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><h2>Motoristas com mais casos</h2><p>Concentração de DNR por motorista.</p></div></div><div class="ranking-list">{% for row in top_motoristas %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.login }} · {{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Produtos críticos</h2><p>Volume e valor acumulado por produto.</p></div></div><div class="ranking-list">{% for row in top_produtos %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+</div>
+
+
+<section class="panel"><div class="panel-head"><div><h2>Distribuição por horário</h2><p>{{ total_com_hora }} casos possuem hora registrada. Base pronta para gráficos e comparações.</p></div></div><div class="ranking-list">{% for row in faixas_horario %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.percentual }}% dos casos com hora</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Importe a coluna de hora para iniciar a análise temporal.</div>{% endfor %}</div></section>
+
+<section class="panel"><div class="panel-head"><div><h2>Biblioteca de Procedimentos</h2><p>Taxa de resolução dos procedimentos registrados.</p></div></div><div class="table-wrap"><table><thead><tr><th>Procedimento</th><th>Casos</th><th>Resolvidos</th><th>Taxa</th></tr></thead><tbody>{% for row in procedimentos %}<tr><td><strong>{{ row.nome }}</strong></td><td>{{ row.total }}</td><td>{{ row.resolvidos }}</td><td><div class="efficiency"><span style="width:{{ row.taxa }}%"></span></div><b>{{ row.taxa }}%</b></td></tr>{% else %}<tr><td colspan="4" class="empty">Registre procedimentos nos casos para medir a eficiência.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

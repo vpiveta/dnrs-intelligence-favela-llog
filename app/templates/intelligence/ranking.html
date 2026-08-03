@@ -1,0 +1,1 @@
+<div class="ranking-list">{% for row in top_clientes %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div>
