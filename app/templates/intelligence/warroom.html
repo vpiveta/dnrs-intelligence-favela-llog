@@ -45,13 +45,13 @@
 {% endif %}
 
 <div class="kpi-grid war-kpis">
-  <div class="kpi"><span>Casos no período</span><strong>{{ total }}</strong><small>base da análise</small></div>
-  <div class="kpi danger"><span>Críticos</span><strong>{{ criticos }}</strong><small>R$ 1.000 ou mais</small></div>
-  <div class="kpi warning"><span>Altos</span><strong>{{ altos }}</strong><small>R$ 500 a R$ 999,99</small></div>
-  <div class="kpi accent"><span>Médios</span><strong>{{ medios }}</strong><small>R$ 100 a R$ 499,99</small></div>
-  <div class="kpi success"><span>Baixos</span><strong>{{ baixos }}</strong><small>abaixo de R$ 100</small></div>
-  <div class="kpi danger"><span>SLA vencido</span><strong>{{ vencidos }}</strong><small>casos fora do prazo</small></div>
-  <div class="kpi warning"><span>Sem procedimento</span><strong>{{ sem_procedimento }}</strong><small>ação ainda não registrada</small></div>
+  <a class="kpi" href="{{ priority_urls.all }}"><span>Casos no período</span><strong>{{ total }}</strong><small>base da análise</small></a>
+  <a class="kpi danger" href="{{ priority_urls.critical }}"><span>Críticos</span><strong>{{ criticos }}</strong><small>R$ 1.000 ou mais</small></a>
+  <a class="kpi warning" href="{{ url_for('cases.index', risk='ALTO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Altos</span><strong>{{ altos }}</strong><small>R$ 500 a R$ 999,99</small></a>
+  <a class="kpi accent" href="{{ url_for('cases.index', risk='MEDIO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Médios</span><strong>{{ medios }}</strong><small>R$ 100 a R$ 499,99</small></a>
+  <a class="kpi success" href="{{ url_for('cases.index', risk='BAIXO', periodo=periodo, period_source='dnr', base_id=base_id or '', next=request.full_path) }}"><span>Baixos</span><strong>{{ baixos }}</strong><small>abaixo de R$ 100</small></a>
+  <a class="kpi danger" href="{{ priority_urls.overdue }}"><span>SLA vencido</span><strong>{{ vencidos }}</strong><small>casos fora do prazo</small></a>
+  <a class="kpi warning" href="{{ priority_urls.no_procedure }}"><span>Sem procedimento</span><strong>{{ sem_procedimento }}</strong><small>ação ainda não registrada</small></a>
   <div class="kpi accent"><span>Valor sob risco</span><strong>R$ {{ '%.2f'|format(valor_risco)|replace('.', ',') }}</strong><small>casos altos e críticos</small></div>
 </div>
 

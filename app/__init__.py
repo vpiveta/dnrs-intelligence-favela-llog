@@ -96,6 +96,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         from . import models  # noqa: F401
         db.create_all()
         _ensure_local_schema()
+        _ensure_production_schema()
         _seed_defaults()
 
     return app
@@ -124,6 +125,39 @@ def _seed_defaults() -> None:
         db.session.add(admin)
     db.session.commit()
 
+
+
+def _ensure_production_schema() -> None:
+    """Amplia campos textuais no PostgreSQL sem apagar dados existentes."""
+    uri = str(db.engine.url)
+    if not uri.startswith("postgresql"):
+        return
+
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    if "casos_dnr" not in set(inspector.get_table_names()):
+        return
+
+    alteracoes = [
+        "ALTER TABLE casos_dnr ALTER COLUMN cliente TYPE VARCHAR(255)",
+        "ALTER TABLE casos_dnr ALTER COLUMN endereco TYPE TEXT",
+        "ALTER TABLE casos_dnr ALTER COLUMN motorista TYPE VARCHAR(255)",
+        "ALTER TABLE casos_dnr ALTER COLUMN produto TYPE TEXT",
+        "ALTER TABLE casos_dnr ALTER COLUMN login_utilizado TYPE VARCHAR(255)",
+        "ALTER TABLE casos_dnr ALTER COLUMN proprietario_login TYPE VARCHAR(255)",
+        "ALTER TABLE casos_dnr ALTER COLUMN categoria TYPE VARCHAR(255)",
+        "ALTER TABLE casos_dnr ALTER COLUMN pedido TYPE VARCHAR(160)",
+        "ALTER TABLE casos_dnr ALTER COLUMN responsavel TYPE VARCHAR(255)",
+    ]
+
+    try:
+        for comando in alteracoes:
+            db.session.execute(text(comando))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 def _ensure_local_schema() -> None:
     """Adiciona colunas novas ao SQLite de uma sprint anterior sem apagar dados."""

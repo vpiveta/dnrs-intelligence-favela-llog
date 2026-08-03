@@ -137,7 +137,6 @@ def index():
     motoristas = [{"nome": k, **v} for k,v in driver_grouped.items()]
     motoristas.sort(key=lambda x:(x["total"],x["valor"]), reverse=True); motoristas=_top_with_others(motoristas, 12)
     logins = _top_identified(casos, "login_utilizado", base_labels, consolidated, 20)
-    produtos = _top_identified(casos, "produto", base_labels, consolidated, 20)
     categorias = _top_identified(casos, "categoria", base_labels, consolidated, 20)
     cep4_rows = _top_identified(casos, "cep4", base_labels, consolidated, 30)
     status_rows = _top_identified(casos, "status", base_labels, consolidated, 30)
@@ -168,7 +167,7 @@ def index():
         for base in bases:
             cur_base = [c for c in current_cases if c.base_id == base.id]
             prev_base = [c for c in previous_cases if c.base_id == base.id]
-            for label, attr in (("CEP4", "cep4"), ("Motorista", "motorista"), ("Login", "login_utilizado"), ("Produto", "produto")):
+            for label, attr in (("CEP4", "cep4"), ("Motorista", "motorista"), ("Login", "login_utilizado"), ("Categoria", "categoria")):
                 cur = Counter(_label(getattr(c, attr, None)) for c in cur_base)
                 prev = Counter(_label(getattr(c, attr, None)) for c in prev_base)
                 for name, count in cur.most_common(5):
@@ -187,8 +186,7 @@ def index():
         "horario": [{"label": x["nome"], "value": x["total"]} for x in por_horario],
         "motorista": [{"label": x["nome"], "value": x["total"], "filter": x.get("full", ""), "base_id": x.get("base_id")} for x in motoristas],
         "login": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.login_utilizado)==x["nome"].split(" · ",1)[-1]), None)} for x in logins],
-        "produto": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.produto)==x["nome"].split(" · ",1)[-1]), None)} for x in produtos],
-        "categoria": [{"label": x["nome"], "value": x["total"]} for x in categorias],
+        "categoria": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.categoria)==x["nome"].split(" · ",1)[-1]), None)} for x in categorias],
         "cep4": [{"label": x["nome"], "value": x["total"]} for x in cep4_rows if x["nome"] != "Não informado"],
         "base": [{"label": x["nome"], "value": x["total"]} for x in base_rows],
         "base_valor": [{"label": x["nome"], "value": float(x["valor"])} for x in base_rows],

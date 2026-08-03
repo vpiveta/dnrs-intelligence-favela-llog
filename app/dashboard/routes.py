@@ -4,13 +4,14 @@ from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level, is_overdue
+from app.core.identity import client_address_key, normalize_address
 
 bp = Blueprint("dashboard", __name__)
 
@@ -51,8 +52,15 @@ def index():
     valor = sum((Decimal(c.valor or 0) for c in casos), Decimal("0"))
     taxa = round((concluidos / total) * 100) if total else 0
 
-    cliente_counts = Counter((c.cliente or "").strip().casefold() for c in casos if c.cliente)
-    endereco_counts = Counter((c.endereco or "").strip().casefold() for c in casos if c.endereco)
+    cliente_counts = Counter(
+        (c.base_id, *client_address_key(c.cliente, c.endereco))
+        for c in casos
+        if client_address_key(c.cliente, c.endereco)[0] and client_address_key(c.cliente, c.endereco)[1]
+    )
+    endereco_counts = Counter(
+        (c.base_id, normalize_address(c.endereco))
+        for c in casos if normalize_address(c.endereco)
+    )
     clientes_reincidentes = sum(1 for n in cliente_counts.values() if n > 1)
     enderecos_reincidentes = sum(1 for n in endereco_counts.values() if n > 1)
 
@@ -79,13 +87,17 @@ def index():
     comparativo.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
     maior_base = comparativo[0] if comparativo else None
 
+    origin = request.full_path.rstrip("?")
+    common = {"periodo": dias, "period_source": "created", "next": origin}
+    if base_id:
+        common["base_id"] = base_id
     prioridades = [
-        {"tipo": "danger", "icone": "!", "titulo": f"{vencidos} casos vencidos", "texto": "Prazo expirado e caso ainda aberto", "filtro": "status=PENDENTE"},
-        {"tipo": "danger", "icone": "◆", "titulo": f"{criticos} casos críticos", "texto": "Produtos de R$ 1.000,00 ou mais", "filtro": "prioridade=CRITICA"},
-        {"tipo": "warning", "icone": "↻", "titulo": f"{aguardando} aguardando retorno", "texto": "Casos dependentes de resposta ou validação", "filtro": "status=AGUARDANDO_RETORNO"},
-        {"tipo": "warning", "icone": "□", "titulo": f"{sem_procedimento} sem procedimento", "texto": "Defina a próxima ação operacional", "filtro": ""},
-        {"tipo": "info", "icone": "◎", "titulo": f"{clientes_reincidentes} clientes reincidentes", "texto": "Clientes com mais de uma ocorrência no período", "filtro": ""},
-        {"tipo": "info", "icone": "⌖", "titulo": f"{enderecos_reincidentes} endereços reincidentes", "texto": "Locais que exigem investigação", "filtro": ""},
+        {"tipo": "danger", "icone": "!", "titulo": f"{vencidos} casos vencidos", "texto": "Prazo expirado e caso ainda aberto", "url": url_for("cases.index", view="overdue", **common)},
+        {"tipo": "danger", "icone": "◆", "titulo": f"{criticos} casos críticos", "texto": "Produtos de R$ 1.000,00 ou mais", "url": url_for("cases.index", view="critical", **common)},
+        {"tipo": "warning", "icone": "↻", "titulo": f"{aguardando} aguardando retorno", "texto": "Casos dependentes de resposta ou validação", "url": url_for("cases.index", view="awaiting", **common)},
+        {"tipo": "warning", "icone": "□", "titulo": f"{sem_procedimento} sem procedimento", "texto": "Defina a próxima ação operacional", "url": url_for("cases.index", view="no_procedure", **common)},
+        {"tipo": "info", "icone": "◎", "titulo": f"{clientes_reincidentes} clientes reincidentes", "texto": "Cliente + endereço com mais de uma ocorrência", "url": url_for("cases.index", view="recurrent_clients", **common)},
+        {"tipo": "info", "icone": "⌖", "titulo": f"{enderecos_reincidentes} endereços reincidentes", "texto": "Locais com mais de uma ocorrência", "url": url_for("cases.index", view="recurrent_addresses", **common)},
     ]
 
     return render_template(

@@ -25,7 +25,7 @@
     <div class="panel-head"><div><h2>Fila de prioridades</h2><p>Ordenada pelo impacto e urgência.</p></div><span class="live-label"><i></i> atualizado</span></div>
     <div class="action-grid">
       {% for item in prioridades %}
-      <a class="action-card {{ item.tipo }}" href="{{ url_for('cases.index') }}{% if item.filtro %}?{{ item.filtro }}{% endif %}">
+      <a class="action-card {{ item.tipo }}" href="{{ item.url }}">
         <div class="action-icon">{{ item.icone }}</div><div><strong>{{ item.titulo }}</strong><span>{{ item.texto }}</span></div><b>›</b>
       </a>
       {% endfor %}

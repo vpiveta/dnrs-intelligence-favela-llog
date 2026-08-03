@@ -1,3 +1,10 @@
+# Enterprise 1.1.6
+
+- Gráfico principal alterado de Produtos para Categorias de produtos.
+- Clique na categoria abre somente os DNRs daquela categoria.
+- Comparação semanal usa Categoria no lugar de Produto.
+- Mantidas as correções de usuários, PostgreSQL, Sala de Guerra, GEO e Analytics.
+
 # 1.1.0 — Homologação
 
 - Sala de Guerra usa todo o período por padrão.
@@ -32,3 +39,16 @@
 - Atualização oficial via GitHub/Render.
 - Estrutura de pastas versionada sem dados sensíveis.
 - Workflow de verificação no GitHub.
+
+## Enterprise 1.1.3 Final
+- Fila de prioridades abre exatamente os DNRs de cada indicador.
+- Base, período e tela de origem são preservados.
+- Reincidência de cliente usa Base + Cliente + Endereço normalizado.
+- Endereço reincidente usa Base + Endereço normalizado.
+- Cards da Sala de Guerra também são contextuais.
+
+## 1.1.5 - Senha no cadastro de usuários
+- Senha inicial e confirmação no cadastro.
+- Hash seguro da senha.
+- Troca obrigatória configurável no primeiro acesso.
+- Redefinição de senha para usuários existentes.

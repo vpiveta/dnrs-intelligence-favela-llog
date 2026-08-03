@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
@@ -204,6 +204,18 @@ def index():
     if not alertas:
         alertas.append({"tipo": "success", "titulo": "Nenhum alerta crítico", "texto": "A operação não possui sinais críticos suficientes no período selecionado.", "acao": "Ver casos", "url": "cases.index", "params": ""})
 
+    origin = request.full_path.rstrip("?")
+    common_filters = {"periodo": periodo, "period_source": "dnr", "next": origin}
+    if base_id:
+        common_filters["base_id"] = base_id
+    priority_urls = {
+        "all": url_for("cases.index", **common_filters),
+        "critical": url_for("cases.index", view="critical", **common_filters),
+        "overdue": url_for("cases.index", view="overdue", **common_filters),
+        "no_procedure": url_for("cases.index", view="no_procedure", **common_filters),
+        "awaiting": url_for("cases.index", view="awaiting", **common_filters),
+    }
+
     bases = db.session.scalars(db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)).all()
     if not current_user.can_view_all_bases:
         bases = [current_user.base]
@@ -230,5 +242,5 @@ def index():
         tendencias_login=tendencias_login, tendencias_produto=tendencias_produto,
         procedimentos=procedimentos, bases=bases, base_rows=base_rows,
         reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
-        periodo=periodo, base_id=base_id, critical_context=critical,
+        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls,
     )

@@ -92,3 +92,6 @@ td small.muted{display:block;margin-top:.25rem}
 
 .chart-load-error canvas{display:none!important}
 .chart-error-message{margin:18px;padding:18px;border:1px solid rgba(244,91,105,.45);background:rgba(244,91,105,.08);border-radius:14px;color:#ffd8dd;font-size:.92rem;line-height:1.5}
+
+/* Usuários e acessos */
+.check-row{grid-column:1/-1;display:flex!important;align-items:center;gap:10px;padding:12px 14px;border:1px solid #293b58;border-radius:12px;background:#101b2d}.check-row input{width:18px;height:18px}.form-grid small,.status-note{display:block;margin-top:5px;color:#8fa6c8;font-size:.76rem}.user-access-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}.entity-main{min-width:0}.reset-box{grid-column:1/-1;width:100%;border-top:1px solid #263753;padding-top:10px}.reset-box summary{cursor:pointer;color:#8fb4ff;font-weight:700}.reset-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:10px}.reset-form input{min-width:0}@media(max-width:760px){.reset-form{grid-template-columns:1fr}.user-access-card{grid-template-columns:auto 1fr}.user-access-card>.badge{grid-column:2}}
