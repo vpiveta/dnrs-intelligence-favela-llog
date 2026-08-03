@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level
+from app.core.identity import client_address_key, normalize_address, normalize_text
 
 bp = Blueprint("intelligence", __name__, url_prefix="/inteligencia")
 
@@ -29,13 +30,13 @@ def _clean(value: str | None) -> str:
 
 
 def _group_rows(casos, attr: str, limit: int = 10):
-    grouped: dict[str, list[CasoDNR]] = defaultdict(list)
-    labels: dict[str, str] = {}
+    grouped: dict[tuple[int, str], list[CasoDNR]] = defaultdict(list)
+    labels: dict[tuple[int, str], str] = {}
     for caso in casos:
         label = _clean(getattr(caso, attr, None))
         if not label:
             continue
-        key = label.casefold()
+        key = (caso.base_id, label.casefold())
         grouped[key].append(caso)
         labels[key] = label
     rows = []
@@ -43,7 +44,67 @@ def _group_rows(casos, attr: str, limit: int = 10):
         total = len(items)
         valor = sum((Decimal(x.valor or 0) for x in items), Decimal("0"))
         abertos = sum(x.status in ABERTOS for x in items)
-        rows.append({"nome": labels[key], "total": total, "abertos": abertos, "valor": valor, "reincidente": total > 1})
+        rows.append({
+            "nome": labels[key], "total": total, "abertos": abertos, "valor": valor,
+            "reincidente": total > 1, "case_ids": [x.id for x in items],
+            "base_id": items[0].base_id, "base": items[0].base.codigo if items[0].base else "",
+        })
+    rows.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
+    return rows[:limit]
+
+
+def _client_address_rows(casos, limit: int = 12):
+    """Agrupa somente os DNR usados na análise de reincidência.
+
+    O mesmo nome em endereços distintos permanece separado para não afirmar que
+    se trata do mesmo cliente.
+    """
+    grouped: dict[tuple[int, str, str], list[CasoDNR]] = defaultdict(list)
+    labels: dict[tuple[int, str, str], tuple[str, str]] = {}
+    for caso in casos:
+        client_key, address_key = client_address_key(caso.cliente, caso.endereco)
+        if not client_key or not address_key:
+            continue
+        key = (caso.base_id, client_key, address_key)
+        grouped[key].append(caso)
+        labels[key] = (_clean(caso.cliente), _clean(caso.endereco))
+    rows = []
+    for key, items in grouped.items():
+        if len(items) < 2:
+            continue
+        cliente, endereco = labels[key]
+        rows.append({
+            "nome": cliente, "endereco": endereco, "total": len(items),
+            "abertos": sum(x.status in ABERTOS for x in items),
+            "valor": sum((Decimal(x.valor or 0) for x in items), Decimal("0")),
+            "case_ids": [x.id for x in items], "base_id": items[0].base_id,
+            "base": items[0].base.codigo if items[0].base else "",
+        })
+    rows.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
+    return rows[:limit]
+
+
+def _address_rows(casos, limit: int = 12):
+    grouped: dict[tuple[int, str], list[CasoDNR]] = defaultdict(list)
+    labels: dict[tuple[int, str], str] = {}
+    for caso in casos:
+        key_address = normalize_address(caso.endereco)
+        if not key_address:
+            continue
+        key = (caso.base_id, key_address)
+        grouped[key].append(caso)
+        labels[key] = _clean(caso.endereco)
+    rows = []
+    for key, items in grouped.items():
+        if len(items) < 2:
+            continue
+        rows.append({
+            "nome": labels[key], "total": len(items),
+            "abertos": sum(x.status in ABERTOS for x in items),
+            "valor": sum((Decimal(x.valor or 0) for x in items), Decimal("0")),
+            "case_ids": [x.id for x in items], "base_id": items[0].base_id,
+            "base": items[0].base.codigo if items[0].base else "",
+        })
     rows.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
     return rows[:limit]
 
@@ -67,6 +128,8 @@ def _driver_login_rows(casos, limit: int = 10):
             "nome": motorista, "login": login, "total": len(items),
             "abertos": sum(x.status in ABERTOS for x in items),
             "valor": sum((Decimal(x.valor or 0) for x in items), Decimal("0")),
+            "case_ids": [x.id for x in items], "base_id": items[0].base_id,
+            "base": items[0].base.codigo if items[0].base else "",
         })
     rows.sort(key=lambda x: (x["total"], x["valor"]), reverse=True)
     return rows[:limit]
@@ -129,20 +192,24 @@ def _score(caso: CasoDNR, _client_count: Counter, _address_count: Counter) -> tu
 @bp.route("/")
 @login_required
 def index():
-    periodo = request.args.get("periodo", "30")
+    periodo = request.args.get("periodo", "all")
     base_id = request.args.get("base_id", type=int)
-    try:
-        dias = max(7, min(int(periodo), 365))
-    except ValueError:
-        dias = 30
-    inicio = datetime.now(timezone.utc) - timedelta(days=dias)
-    query = _scoped_query().where(CasoDNR.criado_em >= inicio)
+    dias = None
+    if periodo != "all":
+        try:
+            dias = max(7, min(int(periodo), 730))
+        except ValueError:
+            periodo = "all"
+    query = _scoped_query()
+    if dias:
+        inicio = datetime.now(timezone.utc) - timedelta(days=dias)
+        query = query.where(CasoDNR.criado_em >= inicio)
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
 
-    clientes = Counter(_clean(c.cliente).casefold() for c in casos if _clean(c.cliente))
-    enderecos = Counter(_clean(c.endereco).casefold() for c in casos if _clean(c.endereco))
+    clientes = Counter((c.base_id, *client_address_key(c.cliente, c.endereco)) for c in casos if client_address_key(c.cliente, c.endereco)[0] and client_address_key(c.cliente, c.endereco)[1])
+    enderecos = Counter((c.base_id, normalize_address(c.endereco)) for c in casos if normalize_address(c.endereco))
     scored = []
     for caso in casos:
         score, nivel = _score(caso, clientes, enderecos)
@@ -157,8 +224,8 @@ def index():
     criticos = sum(item["nivel"] == "CRITICO" for item in scored)
     valor_risco = sum((Decimal(item["caso"].valor or 0) for item in scored if item["nivel"] in {"CRITICO", "ALTO"}), Decimal("0"))
 
-    top_clientes = _group_rows(casos, "cliente")
-    top_enderecos = _group_rows(casos, "endereco")
+    top_clientes = _client_address_rows(casos)
+    top_enderecos = _address_rows(casos)
     top_motoristas = _driver_login_rows(casos)
     top_produtos = _group_rows(casos, "produto")
     procedimentos = _procedure_rows(casos)
@@ -203,5 +270,5 @@ def index():
         top_enderecos=top_enderecos, top_motoristas=top_motoristas,
         top_produtos=top_produtos, procedimentos=procedimentos,
         bases=bases, base_stats=base_stats, insights=insights,
-        periodo=dias, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora,
+        periodo=periodo, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora,
     )

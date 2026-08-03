@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import critical_context, is_overdue, sla_date, value_risk_level, value_risk_reason
+from app.core.identity import client_address_key, normalize_address, normalize_text
 
 bp = Blueprint("warroom", __name__, url_prefix="/sala-de-guerra")
 
@@ -50,10 +51,11 @@ def _risk(caso: CasoDNR, _context: dict[str, object], cliente_counts: Counter, e
     if not _clean(caso.procedimento) and caso.status not in CONCLUIDOS:
         motivos.append("sem procedimento")
 
-    cliente_key = _clean(caso.cliente).casefold()
-    if cliente_key and cliente_counts[cliente_key] > 1:
-        motivos.append(f"cliente com {cliente_counts[cliente_key]} ocorrências")
-    endereco_key = _clean(caso.endereco).casefold()
+    cliente_norm, endereco_norm = client_address_key(caso.cliente, caso.endereco)
+    cliente_key = cliente_norm + "|" + endereco_norm
+    if cliente_norm and endereco_norm and cliente_counts[cliente_key] > 1:
+        motivos.append(f"cliente + endereço com {cliente_counts[cliente_key]} ocorrências")
+    endereco_key = normalize_address(caso.endereco)
     if endereco_key and endereco_counts[endereco_key] > 1:
         motivos.append(f"endereço com {endereco_counts[endereco_key]} ocorrências")
     return score, nivel, motivos
@@ -112,21 +114,29 @@ def _procedure_rows(casos: list[CasoDNR]):
 @login_required
 def index():
     base_id = request.args.get("base_id", type=int)
-    periodo = request.args.get("periodo", "30")
-    try:
-        dias = max(14, min(int(periodo), 365))
-    except ValueError:
-        dias = 30
-
-    inicio = date.today() - timedelta(days=dias - 1)
+    periodo = request.args.get("periodo", "all")
+    dias = None
+    if periodo != "all":
+        try:
+            dias = max(14, min(int(periodo), 730))
+        except ValueError:
+            periodo = "all"
+    inicio = date.today() - timedelta(days=dias - 1) if dias else None
     query = _scope(db.select(CasoDNR))
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
-    casos = [c for c in casos if _case_date(c) >= inicio]
+    if inicio:
+        casos = [c for c in casos if _case_date(c) >= inicio]
 
-    clientes = Counter(_clean(c.cliente).casefold() for c in casos if _clean(c.cliente))
-    enderecos = Counter(_clean(c.endereco).casefold() for c in casos if _clean(c.endereco))
+    # Reincidência confiável: cliente é avaliado junto ao endereço normalizado.
+    cliente_endereco = Counter(client_address_key(c.cliente, c.endereco) for c in casos if _clean(c.cliente) and _clean(c.endereco))
+    clientes = Counter()
+    for c in casos:
+        key = client_address_key(c.cliente, c.endereco)
+        if key[0] and key[1]:
+            clientes[key[0] + "|" + key[1]] += 1
+    enderecos = Counter(normalize_address(c.endereco) for c in casos if _clean(c.endereco))
     critical = critical_context(casos)
 
     scored = []
@@ -154,6 +164,26 @@ def index():
     tendencias_login = _trend_rows(casos, "login_utilizado", inicio_atual, inicio_anterior, fim_anterior)
     tendencias_produto = _trend_rows(casos, "produto", inicio_atual, inicio_anterior, fim_anterior)
     procedimentos = _procedure_rows(casos)
+
+    recurrence_map = {}
+    client_addresses = defaultdict(set)
+    labels = {}
+    for c in casos:
+        client_norm, address_norm = client_address_key(c.cliente, c.endereco)
+        if client_norm and address_norm:
+            key = (c.base_id, client_norm, address_norm)
+            row = recurrence_map.setdefault(key, {"base": c.base, "cliente": c.cliente, "endereco": c.endereco, "total": 0, "valor": Decimal("0")})
+            row["total"] += 1
+            row["valor"] += Decimal(c.valor or 0)
+            client_addresses[(c.base_id, client_norm)].add(address_norm)
+            labels[(c.base_id, client_norm)] = (c.base, c.cliente)
+    reincidentes = sorted((r for r in recurrence_map.values() if r["total"] > 1), key=lambda r: (r["total"], r["valor"]), reverse=True)[:12]
+    nomes_multiplos_enderecos = []
+    for key, addresses in client_addresses.items():
+        if len(addresses) > 1:
+            base, label = labels[key]
+            nomes_multiplos_enderecos.append({"base": base, "cliente": label, "enderecos": len(addresses)})
+    nomes_multiplos_enderecos.sort(key=lambda r: r["enderecos"], reverse=True)
 
     alertas = []
     if criticos:
@@ -199,5 +229,6 @@ def index():
         tendencias_endereco=tendencias_endereco, tendencias_motorista=tendencias_motorista,
         tendencias_login=tendencias_login, tendencias_produto=tendencias_produto,
         procedimentos=procedimentos, bases=bases, base_rows=base_rows,
-        periodo=dias, base_id=base_id, critical_context=critical,
+        reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
+        periodo=periodo, base_id=base_id, critical_context=critical,
     )

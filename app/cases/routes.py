@@ -41,7 +41,19 @@ def index():
     vencido = request.args.get("vencido", "").strip() == "1"
     base_id = request.args.get("base_id", type=int)
     cep4 = request.args.get("cep4", "").strip()
+    cliente = request.args.get("cliente", "").strip()
+    endereco = request.args.get("endereco", "").strip()
+    motorista = request.args.get("motorista", "").strip()
+    login = request.args.get("login", "").strip()
+    produto = request.args.get("produto", "").strip()
+    case_ids_raw = request.args.get("case_ids", "").strip()
 
+    if case_ids_raw:
+        case_ids = [int(x) for x in case_ids_raw.split(",") if x.strip().isdigit()]
+        if case_ids:
+            query = query.where(CasoDNR.id.in_(case_ids))
+        else:
+            query = query.where(CasoDNR.id == -1)
     if busca:
         termo = f"%{busca}%"
         query = query.where(or_(
@@ -60,6 +72,16 @@ def index():
         query = query.where(CasoDNR.base_id == base_id)
     if cep4:
         query = query.where(CasoDNR.cep4 == cep4)
+    if cliente:
+        query = query.where(CasoDNR.cliente == cliente)
+    if endereco:
+        query = query.where(CasoDNR.endereco == endereco)
+    if motorista:
+        query = query.where(CasoDNR.motorista == motorista)
+    if login:
+        query = query.where(CasoDNR.login_utilizado == login)
+    if produto:
+        query = query.where(CasoDNR.produto == produto)
 
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
     context = critical_context(casos)

@@ -1,3 +1,15 @@
+# 1.1.0 — Homologação
+
+- Sala de Guerra usa todo o período por padrão.
+- Cliente reincidente calculado por base + cliente + endereço normalizado.
+- Nomes iguais em endereços diferentes são apresentados para validação, não como reincidência.
+- Itens de reincidência e tendências são clicáveis.
+- GEO não inventa coordenadas pelo centro da base; somente exatas/validadas ou CEP oficial.
+- Geocodificação valida CEP, cidade e UF.
+- Gráfico de horário em rosca com percentual.
+- Motoristas exibidos como BASE · Nome abreviado no consolidado.
+- Período completo disponível em Sala de Guerra e Analytics.
+
 # Changelog
 
 ## 0.8.0 Web
@@ -12,7 +24,6 @@
 - Inicializador local separado da configuração web.
 - Controle de acesso por base preservado.
 - Versão visível `0.8.0-web`.
-<<<<<<< HEAD
 
 
 ## 1.0.0-enterprise
@@ -21,5 +32,3 @@
 - Atualização oficial via GitHub/Render.
 - Estrutura de pastas versionada sem dados sensíveis.
 - Workflow de verificação no GitHub.
-=======
->>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8

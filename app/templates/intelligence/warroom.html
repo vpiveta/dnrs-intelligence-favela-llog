@@ -1,5 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Sala de Guerra · DNR's Intelligence Favela Llog{% endblock %}
+{% block title %}Sala de Guerra · DNR's Intelligence Favela Llog
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><h2>Cliente + endereço reincidente</h2><p>O mesmo nome só é considerado reincidente quando aparece no mesmo endereço normalizado.</p></div></div><div class="ranking-list">
+{% for row in reincidentes %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente, endereco=row.endereco) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>{{ row.endereco }}</span></div><b>{{ row.total }} casos</b><small>R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small></a>{% else %}<div class="empty">Nenhum cliente reincidente no mesmo endereço.</div>{% endfor %}
+</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Nomes em endereços diferentes</h2><p>Itens para validação; não são tratados automaticamente como o mesmo cliente.</p></div></div><div class="ranking-list">
+{% for row in nomes_multiplos_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>Ver os endereços associados</span></div><b>{{ row.enderecos }}</b><small>endereços</small></a>{% else %}<div class="empty">Nenhum nome repetido em endereços diferentes.</div>{% endfor %}
+</div></section></div>
+{% endblock %}
 {% block content %}
 <div class="page-heading command-heading">
   <div>
@@ -9,8 +17,8 @@
   </div>
   <form class="quick-filters" method="get">
     <select name="periodo" onchange="this.form.submit()">
-      {% for n,label in [(14,'14 dias'),(30,'30 dias'),(60,'60 dias'),(90,'90 dias'),(180,'180 dias')] %}
-      <option value="{{ n }}" {% if periodo == n %}selected{% endif %}>{{ label }}</option>
+      {% for n,label in [('all','Todo o período'),(14,'14 dias'),(30,'30 dias'),(60,'60 dias'),(90,'90 dias'),(180,'180 dias')] %}
+      <option value="{{ n }}" {% if periodo|string == n|string %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
     {% if current_user.can_view_all_bases %}
@@ -98,9 +106,17 @@
   <div class="trend-tabs">
     {% for titulo, rows, tipo in [('Endereços',tendencias_endereco,'endereco'),('Motoristas',tendencias_motorista,'motorista'),('Logins',tendencias_login,'login'),('Produtos',tendencias_produto,'produto')] %}
     <div class="trend-column"><h3>{{ titulo }}</h3>
-      {% for row in rows %}<div class="trend-row"><div><strong>{{ row.nome }}</strong><span>{{ row.atual }} atual · {{ row.anterior }} anterior</span></div><b class="{% if row.variacao > 0 %}trend-up{% elif row.variacao < 0 %}trend-down{% endif %}">{{ '%+d'|format(row.variacao) }}%</b></div>{% else %}<div class="muted">Sem comparação suficiente.</div>{% endfor %}
+      {% for row in rows %}<a class="trend-row" href="{% if tipo == 'endereco' %}{{ url_for('geo.index', q=row.nome, next=request.full_path) }}{% elif tipo == 'motorista' %}{{ url_for('cases.index', motorista=row.nome) }}{% elif tipo == 'login' %}{{ url_for('cases.index', login=row.nome) }}{% else %}{{ url_for('cases.index', produto=row.nome) }}{% endif %}"><div><strong>{{ row.nome }}</strong><span>{{ row.atual }} atual · {{ row.anterior }} anterior</span></div><b class="{% if row.variacao > 0 %}trend-up{% elif row.variacao < 0 %}trend-down{% endif %}">{{ '%+d'|format(row.variacao) }}%</b></a>{% else %}<div class="muted">Sem comparação suficiente.</div>{% endfor %}
     </div>
     {% endfor %}
   </div>
 </section>
+
+<div class="grid two">
+<section class="panel"><div class="panel-head"><div><h2>Cliente + endereço reincidente</h2><p>O mesmo nome só é considerado reincidente quando aparece no mesmo endereço normalizado.</p></div></div><div class="ranking-list">
+{% for row in reincidentes %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente, endereco=row.endereco) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>{{ row.endereco }}</span></div><b>{{ row.total }} casos</b><small>R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small></a>{% else %}<div class="empty">Nenhum cliente reincidente no mesmo endereço.</div>{% endfor %}
+</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Nomes em endereços diferentes</h2><p>Itens para validação; não são tratados automaticamente como o mesmo cliente.</p></div></div><div class="ranking-list">
+{% for row in nomes_multiplos_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', cliente=row.cliente) }}"><div><strong><span class="base-tag">{{ row.base.codigo }}</span> {{ row.cliente }}</strong><span>Ver os endereços associados</span></div><b>{{ row.enderecos }}</b><small>endereços</small></a>{% else %}<div class="empty">Nenhum nome repetido em endereços diferentes.</div>{% endfor %}
+</div></section></div>
 {% endblock %}

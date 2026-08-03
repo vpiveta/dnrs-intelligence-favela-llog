@@ -17,6 +17,7 @@ from sqlalchemy import or_
 
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
+from app.core.identity import normalize_address
 
 bp = Blueprint("geo", __name__, url_prefix="/geo")
 
@@ -81,47 +82,19 @@ def _stable_offset(key: str, radius: float = 0.0045) -> tuple[float, float]:
 
 
 def _display_points(casos: list[CasoDNR]):
-    """Garante visualização de todos os endereços no mapa.
+    """Exibe somente coordenadas verificáveis.
 
-    Coordenadas exatas são preservadas. Casos ainda não geocodificados usam,
-    nesta ordem, o centro do CEP completo, do CEP4, da base ou um centro
-    operacional padrão. Pontos aproximados recebem deslocamento determinístico
-    para não ficarem totalmente sobrepostos e são identificados no popup.
+    Nunca inventa ponto pelo centro da base. Localizações exatas e aproximações
+    oficiais pelo CEP são mostradas com identificação clara; pendentes ficam fora
+    do mapa até validação.
     """
-    exact = [c for c in casos if c.latitude is not None and c.longitude is not None]
-    full_cep_coords = {}
-    cep4_coords = {}
-    base_coords = {}
-    for c in exact:
-        full = _cep_digits(c.cep)
-        if full:
-            full_cep_coords.setdefault(full, []).append((c.latitude, c.longitude))
-        if c.cep4:
-            cep4_coords.setdefault(c.cep4, []).append((c.latitude, c.longitude))
-        base_coords.setdefault(c.base_id, []).append((c.latitude, c.longitude))
-    full_centers = {k: _centroid(v) for k, v in full_cep_coords.items()}
-    cep4_centers = {k: _centroid(v) for k, v in cep4_coords.items()}
-    base_centers = {k: _centroid(v) for k, v in base_coords.items()}
-
     points = []
     for c in casos:
-        if c.latitude is not None and c.longitude is not None:
-            points.append((c, c.latitude, c.longitude, c.geocode_status or "LOCALIZADO", False))
+        if c.latitude is None or c.longitude is None:
             continue
-        full = _cep_digits(c.cep)
-        center = full_centers.get(full) if full else None
-        precision = "CEP_APROXIMADO"
-        if center is None and c.cep4:
-            center = cep4_centers.get(c.cep4)
-            precision = "CEP4_APROXIMADO"
-        if center is None:
-            center = base_centers.get(c.base_id)
-            precision = "BASE_APROXIMADA"
-        if center is None:
-            center = BASE_DEFAULT_COORDS.get(c.base.codigo if c.base else "", DEFAULT_COORDS)
-            precision = "POSICAO_PROVISORIA"
-        dlat, dlng = _stable_offset(f"{c.id}|{c.tbr}|{c.endereco}")
-        points.append((c, center[0] + dlat, center[1] + dlng, precision, True))
+        status = c.geocode_status or "LOCALIZADO"
+        approximate = status in {"CEP_APROXIMADO", "CEP4_APROXIMADO"}
+        points.append((c, c.latitude, c.longitude, status, approximate))
     return points
 
 HTTP_HEADERS = {
@@ -222,35 +195,39 @@ def index():
 @login_required
 def api_pontos():
     casos = db.session.scalars(_apply_filters(_visible_query())).all()
-    payload = []
+    grouped = {}
     for c, lat, lng, precision, approximate in _display_points(casos):
         if not c.endereco:
             continue
-        payload.append(
-            {
-                "id": c.id,
-                "codigo": c.codigo,
-                "tbr": c.tbr,
-                "cliente": c.cliente,
-                "endereco": c.endereco or "",
-                "cep": c.cep or "",
-                "cep4": c.cep4 or "",
-                "motorista": c.motorista or "",
-                "login": c.login_utilizado or "",
-                "hora": c.hora_dnr.strftime("%H:%M:%S") if c.hora_dnr else "",
-                "produto": c.produto or "",
-                "valor": float(c.valor or 0),
-                "status": c.status,
-                "prioridade": c.prioridade,
-                "base": c.base.codigo,
-                "lat": lat,
-                "lng": lng,
-                "precision": precision,
-                "approximate": approximate,
-                "heat_weight": max(0.35, min(8, float(c.valor or 0) / 500 + 1)) * (0.55 if approximate else 1),
-                "url": url_for("cases.detalhe", caso_id=c.id, next=request.args.get("_origin") or url_for("geo.index")),
-            }
-        )
+        key = (c.base_id, normalize_address(c.endereco), _cep_digits(c.cep), round(float(lat), 6), round(float(lng), 6))
+        group = grouped.setdefault(key, {
+            "ids": [], "codigo": c.codigo, "tbrs": [], "clientes": set(), "endereco": c.endereco or "",
+            "cep": c.cep or "", "cep4": c.cep4 or "", "motoristas": set(), "logins": set(),
+            "produtos": set(), "valor": 0.0, "base": c.base.codigo if c.base else "",
+            "lat": lat, "lng": lng, "precision": precision, "approximate": approximate,
+            "heat_weight": 0.0,
+        })
+        group["ids"].append(c.id); group["tbrs"].append(c.tbr)
+        if c.cliente: group["clientes"].add(c.cliente)
+        if c.motorista: group["motoristas"].add(c.motorista)
+        if c.login_utilizado: group["logins"].add(c.login_utilizado)
+        if c.produto: group["produtos"].add(c.produto)
+        group["valor"] += float(c.valor or 0)
+        group["heat_weight"] += max(0.35, min(8, float(c.valor or 0) / 500 + 1)) * (0.55 if approximate else 1)
+    payload=[]
+    origin=request.args.get("_origin") or url_for("geo.index")
+    for group in grouped.values():
+        ids=group.pop("ids")
+        group.update({
+            "id": ids[0], "case_ids": ids, "count": len(ids),
+            "tbr": group.pop("tbrs")[0] if len(ids)==1 else f"{len(ids)} DNRs",
+            "cliente": next(iter(group.pop("clientes")), "Cliente não informado"),
+            "motorista": ", ".join(sorted(group.pop("motoristas"))[:3]),
+            "login": ", ".join(sorted(group.pop("logins"))[:3]),
+            "produto": ", ".join(sorted(group.pop("produtos"))[:3]),
+            "url": url_for("cases.index", case_ids=",".join(str(x) for x in ids), next=origin),
+        })
+        payload.append(group)
     return jsonify(payload)
 
 
@@ -332,26 +309,29 @@ def norm_geo(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.casefold())
 
 
-def _nominatim_lookup(query: str) -> tuple[float, float] | None:
+def _nominatim_lookup(query: str, expected_cep: str = "", expected_city: str = "", expected_uf: str = "") -> tuple[float, float] | None:
     global _NOMINATIM_COOLDOWN_UNTIL
     _respect_nominatim_limit()
-    params = {
-        "q": query,
-        "format": "jsonv2",
-        "limit": 1,
-        "countrycodes": "br",
-        "addressdetails": 1,
-    }
+    params = {"q": query, "format": "jsonv2", "limit": 5, "countrycodes": "br", "addressdetails": 1}
     response = requests.get(NOMINATIM_URL, params=params, headers=HTTP_HEADERS, timeout=20)
     if response.status_code == 429:
-        wait_seconds = _retry_after_seconds(response)
-        _NOMINATIM_COOLDOWN_UNTIL = time.monotonic() + wait_seconds
+        wait_seconds = _retry_after_seconds(response); _NOMINATIM_COOLDOWN_UNTIL = time.monotonic() + wait_seconds
         raise GeocodeRateLimited(wait_seconds)
     response.raise_for_status()
-    data = response.json()
-    if not data:
-        return None
-    return float(data[0]["lat"]), float(data[0]["lon"])
+    expected_city_norm = norm_geo(expected_city); expected_uf_norm = norm_geo(expected_uf); expected_cep = _cep_digits(expected_cep)
+    for item in response.json() or []:
+        addr = item.get("address") or {}
+        postcode = _cep_digits(addr.get("postcode"))
+        city = addr.get("city") or addr.get("town") or addr.get("municipality") or addr.get("village") or ""
+        uf = addr.get("state_code") or addr.get("ISO3166-2-lvl4", "").split("-")[-1] or addr.get("state") or ""
+        if expected_cep and postcode and postcode != expected_cep:
+            continue
+        if expected_city_norm and city and norm_geo(city) != expected_city_norm:
+            continue
+        if expected_uf_norm and uf and expected_uf_norm not in norm_geo(uf):
+            continue
+        return float(item["lat"]), float(item["lon"])
+    return None
 
 
 def _cep_lookup(cep: str) -> tuple[float, float] | None:
@@ -376,7 +356,9 @@ def _geocode(caso: CasoDNR) -> tuple[float, float, str] | None:
         cached = db.session.scalar(
             db.select(CasoDNR).where(
                 CasoDNR.id != caso.id,
+                CasoDNR.base_id == caso.base_id,
                 CasoDNR.endereco == caso.endereco,
+                CasoDNR.cep == caso.cep,
                 CasoDNR.latitude.is_not(None),
                 CasoDNR.longitude.is_not(None),
             ).limit(1)
@@ -386,20 +368,25 @@ def _geocode(caso: CasoDNR) -> tuple[float, float, str] | None:
 
     last_error: requests.RequestException | None = None
     rate_limited: GeocodeRateLimited | None = None
-    # No máximo duas consultas por endereço. Isso respeita o serviço público e
-    # evita bloqueio por excesso de tentativas com pequenas variações.
-    for candidate in _address_candidates(caso)[:2]:
+    cep = _cep_digits(caso.cep)
+    try:
+        via = _viacep_address(cep) if cep else {}
+    except requests.RequestException:
+        via = {}
+    expected_city = via.get("cidade") or (caso.base.cidade if caso.base else "")
+    expected_uf = via.get("uf") or "SP"
+    # Tenta até três formatos e só aceita resultado compatível com CEP/cidade/UF.
+    for candidate in _address_candidates(caso)[:3]:
         try:
-            coords = _nominatim_lookup(candidate)
+            coords = _nominatim_lookup(candidate, cep, expected_city, expected_uf)
             if coords:
-                return coords[0], coords[1], "LOCALIZADO"
+                return coords[0], coords[1], "LOCALIZADO_VALIDADO"
         except GeocodeRateLimited as exc:
             rate_limited = exc
             break
         except requests.RequestException as exc:
             last_error = exc
 
-    cep = _cep_digits(caso.cep)
     if cep:
         # Reutiliza um ponto aproximado já conhecido do mesmo CEP.
         cached_cep = db.session.scalar(

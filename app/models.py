@@ -142,7 +142,6 @@ class HistoricoCaso(TimestampMixin, db.Model):
     usuario = db.relationship("User", foreign_keys=[usuario_id])
 
 
-<<<<<<< HEAD
 class SchemaVersion(db.Model):
     __tablename__ = "schema_versions"
     id = db.Column(db.Integer, primary_key=True)
@@ -151,8 +150,6 @@ class SchemaVersion(db.Model):
     descricao = db.Column(db.String(255))
 
 
-=======
->>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8
 @login_manager.user_loader
 def load_user(user_id: str):
     return db.session.get(User, int(user_id))

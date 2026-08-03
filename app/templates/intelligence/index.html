@@ -5,7 +5,7 @@
   <div><span class="eyebrow">Fase 4</span><h1>Inteligência Operacional</h1><p>Reincidências, risco, eficiência dos procedimentos e comparação entre bases.</p></div>
   <form class="quick-filters" method="get">
     {% if current_user.can_view_all_bases %}<select name="base_id" onchange="this.form.submit()"><option value="">Todas as bases</option>{% for b in bases %}<option value="{{ b.id }}" {% if base_id == b.id %}selected{% endif %}>{{ b.codigo }}</option>{% endfor %}</select>{% endif %}
-    <select name="periodo" onchange="this.form.submit()"><option value="7" {% if periodo==7 %}selected{% endif %}>7 dias</option><option value="30" {% if periodo==30 %}selected{% endif %}>30 dias</option><option value="90" {% if periodo==90 %}selected{% endif %}>90 dias</option><option value="365" {% if periodo==365 %}selected{% endif %}>12 meses</option></select>
+    <select name="periodo" onchange="this.form.submit()"><option value="all" {% if periodo|string == "all" %}selected{% endif %}>Todo o período</option><option value="7" {% if periodo==7 %}selected{% endif %}>7 dias</option><option value="30" {% if periodo==30 %}selected{% endif %}>30 dias</option><option value="90" {% if periodo==90 %}selected{% endif %}>90 dias</option><option value="365" {% if periodo==365 %}selected{% endif %}>12 meses</option></select>
   </form>
 </div>
 
@@ -28,13 +28,13 @@
 </div>
 
 <div class="grid two">
-<section class="panel"><div class="panel-head"><div><h2>Clientes reincidentes</h2><p>Maior recorrência e impacto financeiro.</p></div></div>{% include 'intelligence/ranking.html' with context %}</section>
-<section class="panel"><div class="panel-head"><div><h2>Endereços reincidentes</h2><p>Locais que exigem investigação operacional.</p></div></div><div class="ranking-list">{% for row in top_enderecos %}<div class="ranking-row"><div><strong><a class="inline-map-link" href="{{ url_for('geo.index', q=row.nome) }}">{{ row.nome }}</a></strong><span>{{ row.abertos }} em aberto · abrir no mapa</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Clientes reincidentes</h2><p>Mesmo cliente, mesma base e mesmo endereço; clique para ver somente os DNRs analisados.</p></div></div>{% include 'intelligence/ranking.html' with context %}</section>
+<section class="panel"><div class="panel-head"><div><h2>Endereços reincidentes</h2><p>Clique para abrir somente os DNRs que formaram esta reincidência.</p></div></div><div class="ranking-list">{% for row in top_enderecos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.abertos }} em aberto · visualizar DNRs analisados</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem endereços reincidentes no período.</div>{% endfor %}</div></section>
 </div>
 
 <div class="grid two">
-<section class="panel"><div class="panel-head"><div><h2>Motoristas com mais casos</h2><p>Concentração de DNR por motorista.</p></div></div><div class="ranking-list">{% for row in top_motoristas %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.login }} · {{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
-<section class="panel"><div class="panel-head"><div><h2>Produtos críticos</h2><p>Volume e valor acumulado por produto.</p></div></div><div class="ranking-list">{% for row in top_produtos %}<div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></div>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Motoristas com mais casos</h2><p>Concentração de DNR por motorista.</p></div></div><div class="ranking-list">{% for row in top_motoristas %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.login }} · {{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Produtos críticos</h2><p>Volume e valor acumulado por produto.</p></div></div><div class="ranking-list">{% for row in top_produtos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
 </div>
 
 

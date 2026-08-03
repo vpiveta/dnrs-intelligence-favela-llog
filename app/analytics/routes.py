@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import is_overdue, value_risk_level
+from app.core.identity import abbreviate_person
 
 bp = Blueprint("analytics", __name__, url_prefix="/analytics")
 CONCLUIDOS = {"RESOLVIDO", "ENCERRADO", "CONCLUIDO"}
@@ -76,17 +77,30 @@ def _risk_counts(casos):
     return {level: counts.get(level, 0) for level in RISK_ORDER}
 
 
+def _top_with_others(rows, limit=12):
+    if len(rows) <= limit:
+        return rows
+    kept = rows[:limit]
+    rest = rows[limit:]
+    kept.append({"nome": "Outros", "total": sum(x["total"] for x in rest), "valor": sum((x["valor"] for x in rest), Decimal("0")), "full": "", "base_id": None})
+    return kept
+
+
 @bp.route("/")
 @login_required
 def index():
-    periodo = request.args.get("periodo", "90")
+    periodo = request.args.get("periodo", "all")
     base_id = request.args.get("base_id", type=int)
-    try:
-        dias = max(7, min(int(periodo), 730))
-    except ValueError:
-        dias = 90
-    inicio = datetime.now(timezone.utc) - timedelta(days=dias)
-    query = _visible_query().where(CasoDNR.criado_em >= inicio)
+    dias = None
+    if periodo != "all":
+        try:
+            dias = max(7, min(int(periodo), 730))
+        except ValueError:
+            periodo = "all"
+    query = _visible_query()
+    if dias:
+        inicio = datetime.now(timezone.utc) - timedelta(days=dias)
+        query = query.where(CasoDNR.criado_em >= inicio)
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.criado_em.asc())).all()
@@ -111,7 +125,17 @@ def index():
     por_semana = _series(casos, lambda c: f"S{int(c.semana_numero):02d}" if c.semana_numero else None)
     por_mes = _series(casos, lambda c: f"{int(c.ano):04d}-{int(c.mes):02d}" if c.ano and c.mes else None)
     por_horario = _top_identified(casos, "faixa_horaria", base_labels, consolidated, 30)
-    motoristas = _top_identified(casos, "motorista", base_labels, consolidated, 20)
+    # Motorista: BASE · Nome abreviado; nome completo permanece nos detalhes/filtros.
+    driver_grouped = defaultdict(lambda: {"total": 0, "valor": Decimal("0"), "full": "", "base_id": None})
+    for c in casos:
+        full = _label(c.motorista)
+        base = base_labels.get(c.base_id, "BASE")
+        short = abbreviate_person(full)
+        label = f"{base} · {short}" if consolidated else short
+        row = driver_grouped[label]
+        row["total"] += 1; row["valor"] += Decimal(c.valor or 0); row["full"] = full; row["base_id"] = c.base_id
+    motoristas = [{"nome": k, **v} for k,v in driver_grouped.items()]
+    motoristas.sort(key=lambda x:(x["total"],x["valor"]), reverse=True); motoristas=_top_with_others(motoristas, 12)
     logins = _top_identified(casos, "login_utilizado", base_labels, consolidated, 20)
     produtos = _top_identified(casos, "produto", base_labels, consolidated, 20)
     categorias = _top_identified(casos, "categoria", base_labels, consolidated, 20)
@@ -161,9 +185,9 @@ def index():
         "semana_multi": _multi_series(casos, lambda c: f"S{int(c.semana_numero):02d}" if c.semana_numero else None, bases) if consolidated else None,
         "mes": por_mes,
         "horario": [{"label": x["nome"], "value": x["total"]} for x in por_horario],
-        "motorista": [{"label": x["nome"], "value": x["total"]} for x in motoristas],
-        "login": [{"label": x["nome"], "value": x["total"]} for x in logins],
-        "produto": [{"label": x["nome"], "value": x["total"]} for x in produtos],
+        "motorista": [{"label": x["nome"], "value": x["total"], "filter": x.get("full", ""), "base_id": x.get("base_id")} for x in motoristas],
+        "login": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.login_utilizado)==x["nome"].split(" · ",1)[-1]), None)} for x in logins],
+        "produto": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.produto)==x["nome"].split(" · ",1)[-1]), None)} for x in produtos],
         "categoria": [{"label": x["nome"], "value": x["total"]} for x in categorias],
         "cep4": [{"label": x["nome"], "value": x["total"]} for x in cep4_rows if x["nome"] != "Não informado"],
         "base": [{"label": x["nome"], "value": x["total"]} for x in base_rows],

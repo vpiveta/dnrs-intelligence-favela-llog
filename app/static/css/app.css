@@ -62,7 +62,6 @@ td small.muted{display:block;margin-top:.25rem}
 .release-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;padding:12px 15px;border:1px solid rgba(37,194,138,.35);border-radius:13px;background:rgba(37,194,138,.08);color:#9af0cf}.release-banner strong{color:#fff}.release-banner small{color:#9fb0c4}
 
 /* v0.7.5 — visão regional por base e navegação contextual */
-<<<<<<< HEAD
 .executive-consolidated{margin-bottom:18px}.executive-base-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.executive-base-card{display:flex;flex-direction:column;gap:7px;padding:15px;border:1px solid var(--line);border-radius:14px;background:rgba(17,28,46,.72);color:inherit;text-decoration:none}.executive-base-card:hover{border-color:#4f7cff;background:rgba(79,124,255,.08)}.executive-base-card div{display:flex;justify-content:space-between;gap:8px}.executive-base-card span,.executive-base-card small{color:var(--muted)}.base-tag{display:inline-flex;padding:3px 7px;border-radius:7px;background:rgba(79,124,255,.15);color:#9cb6ff;font-size:11px;font-weight:800;text-decoration:none}.base-row.detailed{grid-template-columns:minmax(150px,1fr) 1.5fr minmax(170px,.8fr)}.base-metrics{display:flex;flex-direction:column;align-items:flex-end}.base-metrics small{color:var(--muted);font-size:11px}.base-int-row{text-decoration:none;color:inherit}.score-row .base-tag{margin-right:6px}@media(max-width:700px){.base-row.detailed{grid-template-columns:1fr}.base-metrics{align-items:flex-start}}
 
 /* Identidade DNR's Intelligence Favela Llog */
@@ -74,9 +73,22 @@ td small.muted{display:block;margin-top:.25rem}
 .steps-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.step{display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:14px;background:#111a29}.step b{display:grid;place-items:center;min-width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff}.step code{word-break:break-word}
 @media(max-width:900px){.steps-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.steps-grid{grid-template-columns:1fr}.info-list>div{display:block}.info-list strong{display:block;margin-top:4px}}
-=======
-.executive-consolidated{margin-bottom:18px}.executive-base-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.executive-base-card{display:flex;flex-direction:column;gap:7px;padding:15px;border:1px solid var(--border);border-radius:14px;background:rgba(17,28,46,.72);color:inherit;text-decoration:none}.executive-base-card:hover{border-color:#4f7cff;background:rgba(79,124,255,.08)}.executive-base-card div{display:flex;justify-content:space-between;gap:8px}.executive-base-card span,.executive-base-card small{color:var(--muted)}.base-tag{display:inline-flex;padding:3px 7px;border-radius:7px;background:rgba(79,124,255,.15);color:#9cb6ff;font-size:11px;font-weight:800;text-decoration:none}.base-row.detailed{grid-template-columns:minmax(150px,1fr) 1.5fr minmax(170px,.8fr)}.base-metrics{display:flex;flex-direction:column;align-items:flex-end}.base-metrics small{color:var(--muted);font-size:11px}.base-int-row{text-decoration:none;color:inherit}.score-row .base-tag{margin-right:6px}@media(max-width:700px){.base-row.detailed{grid-template-columns:1fr}.base-metrics{align-items:flex-start}}
 
-/* Identidade DNR's Intelligence Favela Llog */
-.brand-image{height:auto;min-height:78px;padding:10px 12px;gap:10px;text-decoration:none}.brand-image img{width:72px;height:50px;object-fit:cover;object-position:center;border-radius:10px;border:1px solid rgba(245,165,36,.35)}.brand-image strong{font-size:12px;line-height:1.15}.brand-image span{font-size:10px;color:#f5a524}.login-logo-wrap{display:flex;justify-content:center;margin-bottom:22px}.login-logo-image{width:min(100%,420px);max-height:235px;object-fit:cover;border-radius:18px;border:1px solid rgba(245,165,36,.38)}.cep-chip-head,.pending-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.geo-base-summary{display:flex;gap:8px;flex-wrap:wrap}.top-actions{white-space:nowrap}.version-badge,.release-banner{display:none!important}@media(max-width:760px){.brand-image img{width:54px;height:42px}.brand-image div{display:none}.login-logo-image{max-height:180px}}
->>>>>>> 2de3bb5a2d6358c1527e18cfaffdfbc1dfc6baa8
+/* Enterprise 1.1 — navegação e leitura executiva */
+.ranking-row.clickable,.trend-row{color:inherit;text-decoration:none;transition:.18s ease}
+.ranking-row.clickable:hover,.trend-row:hover{background:rgba(79,124,255,.08);border-color:rgba(79,124,255,.38);transform:translateY(-1px)}
+.chart-panel{position:relative;overflow:hidden}.chart-panel:before{content:"";position:absolute;inset:0 auto auto 0;width:100%;height:3px;background:linear-gradient(90deg,var(--blue),transparent);opacity:.65}
+.chart-panel .panel-head p{max-width:620px;line-height:1.5}.chart-panel canvas{filter:drop-shadow(0 10px 22px rgba(0,0,0,.16))}
+.geo-confidence{display:flex;gap:8px;flex-wrap:wrap}.geo-confidence .pill{font-size:11px}
+
+/* Enterprise 1.1.1 — visual analítico e desempenho */
+.analytics-grid{align-items:stretch}.chart-panel{background:linear-gradient(145deg,#111a29 0%,#0d1625 100%);border-color:rgba(93,123,171,.28)}
+.chart-panel:before{height:4px;background:linear-gradient(90deg,#4f7cff,#25c28a,#f5a524,#f45b69);opacity:.9}
+.chart-panel:hover{border-color:rgba(79,124,255,.45);transform:translateY(-1px);transition:.2s ease}
+.chart-panel .panel-head h2{font-size:16px}.chart-panel .panel-head p{color:#8fa4c2}.driver-chart{min-height:510px}.driver-chart canvas{height:420px!important}
+.ranking-row.clickable{cursor:pointer}.ranking-row.clickable strong{color:#f3f7ff}.ranking-row.clickable:hover strong{color:#8facff}
+.map-popup a{display:inline-flex;padding:7px 10px;border-radius:8px;background:#e8efff;text-decoration:none}
+@media(max-width:650px){.driver-chart{min-height:430px}.driver-chart canvas{height:350px!important}}
+
+.chart-load-error canvas{display:none!important}
+.chart-error-message{margin:18px;padding:18px;border:1px solid rgba(244,91,105,.45);background:rgba(244,91,105,.08);border-radius:14px;color:#ffd8dd;font-size:.92rem;line-height:1.5}
