@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Sala de Guerra · DNR's Intelligence Favela Llog{% endblock %}
+{% block content %}
+<div class="page-heading command-heading">
+  <div>
+    <div class="eyebrow">IA OPERACIONAL</div>
+    <h1>Sala de Guerra</h1>
+    <p>Prioridades, crescimento, risco e recomendações para orientar a ação do gerente.</p>
+  </div>
+  <form class="quick-filters" method="get">
+    <select name="periodo" onchange="this.form.submit()">
+      {% for n,label in [(14,'14 dias'),(30,'30 dias'),(60,'60 dias'),(90,'90 dias'),(180,'180 dias')] %}
+      <option value="{{ n }}" {% if periodo == n %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if current_user.can_view_all_bases %}
+    <select name="base_id" onchange="this.form.submit()">
+      <option value="">Todas as bases</option>
+      {% for base in bases %}<option value="{{ base.id }}" {% if base_id == base.id %}selected{% endif %}>{{ base.codigo }} · {{ base.nome }}</option>{% endfor %}
+    </select>
+    {% endif %}
+  </form>
+</div>
+
+{% if current_user.can_view_all_bases and not base_id %}
+<section class="panel executive-consolidated">
+  <div class="panel-head"><div><h2>Resumo executivo consolidado</h2><p>Visão geral de todas as bases no período selecionado.</p></div><span class="pill">{{ base_rows|length }} bases</span></div>
+  <div class="executive-base-grid">
+    {% for row in base_rows %}
+    <a class="executive-base-card" href="{{ url_for('warroom.index', base_id=row.base.id, periodo=periodo) }}">
+      <div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div>
+      <b>{{ row.total }} casos</b><small>{{ row.abertos }} abertos · {{ row.taxa }}% resolvidos · R$ {{ '{:,.2f}'.format(row.valor)|replace(',', 'X')|replace('.', ',')|replace('X', '.') }}</small>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<div class="kpi-grid war-kpis">
+  <div class="kpi"><span>Casos no período</span><strong>{{ total }}</strong><small>base da análise</small></div>
+  <div class="kpi danger"><span>Críticos</span><strong>{{ criticos }}</strong><small>R$ 1.000 ou mais</small></div>
+  <div class="kpi warning"><span>Altos</span><strong>{{ altos }}</strong><small>R$ 500 a R$ 999,99</small></div>
+  <div class="kpi accent"><span>Médios</span><strong>{{ medios }}</strong><small>R$ 100 a R$ 499,99</small></div>
+  <div class="kpi success"><span>Baixos</span><strong>{{ baixos }}</strong><small>abaixo de R$ 100</small></div>
+  <div class="kpi danger"><span>SLA vencido</span><strong>{{ vencidos }}</strong><small>casos fora do prazo</small></div>
+  <div class="kpi warning"><span>Sem procedimento</span><strong>{{ sem_procedimento }}</strong><small>ação ainda não registrada</small></div>
+  <div class="kpi accent"><span>Valor sob risco</span><strong>R$ {{ '%.2f'|format(valor_risco)|replace('.', ',') }}</strong><small>casos altos e críticos</small></div>
+</div>
+
+<div class="dashboard-grid war-main-grid">
+  <section class="panel">
+    <div class="panel-head"><div><h2>O que exige ação agora</h2><p>Alertas automáticos com acesso direto ao ponto de investigação.</p></div><span class="pill">{{ alertas|length }} alertas</span></div>
+    <div class="war-alert-grid">
+      {% for alerta in alertas %}
+      <article class="war-alert {{ alerta.tipo }}">
+        <div class="war-alert-icon">{% if alerta.tipo == 'danger' %}!{% elif alerta.tipo == 'warning' %}▲{% elif alerta.tipo == 'success' %}✓{% else %}◎{% endif %}</div>
+        <div><strong>{{ alerta.titulo }}</strong><span>{{ alerta.texto }}</span></div>
+        <a class="btn small ghost" href="{{ url_for(alerta.url) }}{% if alerta.params %}?{{ alerta.params|urlencode }}{% endif %}">{{ alerta.acao }}</a>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Comparação por base</h2><p>Volume, pendências e resolução.</p></div></div>
+    <div class="base-intelligence">
+      {% for row in base_rows %}
+      <a class="base-int-row" href="{{ url_for('warroom.index', base_id=row.base.id, periodo=periodo) }}"><div><strong>{{ row.base.codigo }}</strong><span>{{ row.base.nome }}</span></div><div><b>{{ row.total }}</b><small>casos</small></div><div><b>{{ row.abertos }}</b><small>abertos</small></div><div><b>{{ row.taxa }}%</b><small>resolução</small></div></a>
+      {% else %}<div class="empty">Nenhum dado no período.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+
+<div class="grid two">
+  <section class="panel">
+    <div class="panel-head"><div><h2>Casos prioritários</h2><p>Risco automático por valor: crítico ≥ R$ 1.000; alto de R$ 500 a R$ 999,99; médio de R$ 100 a R$ 499,99; baixo abaixo de R$ 100.</p></div><a class="btn small ghost" href="{{ url_for('cases.index') }}">Ver todos</a></div>
+    <div class="score-list">
+      {% for item in casos_prioritarios %}
+      <a class="score-row" href="{{ url_for('cases.detalhe', caso_id=item.caso.id, next=request.full_path) }}">
+        <div class="score-ring level-{{ item.nivel|lower }}">{{ item.score }}</div>
+        <div><strong><span class="base-tag">{{ item.caso.base.codigo }}</span> {{ item.caso.codigo }} · {{ item.caso.tbr }}</strong><span>{{ item.caso.cliente }} · {{ item.caso.motorista or 'Motorista não informado' }} · {{ item.caso.login_utilizado or 'Login não informado' }}</span><small>{{ item.motivos|join(' · ') }}</small></div>
+        <span class="badge priority-{{ item.nivel|lower }}">{{ item.nivel }}</span>
+      </a>
+      {% else %}<div class="empty">Nenhum caso para priorizar.</div>{% endfor %}
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><div><h2>Procedimentos mais eficazes</h2><p>Taxa de resolução registrada na base.</p></div></div>
+    <div class="ranking-list">
+      {% for row in procedimentos %}
+      <div class="ranking-row"><div><strong>{{ row.nome }}</strong><span>{{ row.resolvidos }} resolvidos de {{ row.total }}</span></div><b>{{ row.taxa }}%</b><small><span class="efficiency"><span style="width:{{ row.taxa }}%"></span></span></small></div>
+      {% else %}<div class="empty">Registre procedimentos para medir a eficácia.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><div><h2>Crescimento semanal</h2><p>Semana atual comparada aos sete dias anteriores.</p></div><span class="pill">Atual × anterior</span></div>
+  <div class="trend-tabs">
+    {% for titulo, rows, tipo in [('Endereços',tendencias_endereco,'endereco'),('Motoristas',tendencias_motorista,'motorista'),('Logins',tendencias_login,'login'),('Produtos',tendencias_produto,'produto')] %}
+    <div class="trend-column"><h3>{{ titulo }}</h3>
+      {% for row in rows %}<div class="trend-row"><div><strong>{{ row.nome }}</strong><span>{{ row.atual }} atual · {{ row.anterior }} anterior</span></div><b class="{% if row.variacao > 0 %}trend-up{% elif row.variacao < 0 %}trend-down{% endif %}">{{ '%+d'|format(row.variacao) }}%</b></div>{% else %}<div class="muted">Sem comparação suficiente.</div>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

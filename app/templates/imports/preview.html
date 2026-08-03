@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% block title %}Prévia da importação · DNR's Intelligence Favela Llog{% endblock %}{% block content %}
+<div class="page-head"><div><span class="eyebrow">Data Engine</span><h1>Conferir importação</h1><p>{{ original_name }} · {{ base.codigo }} · revise os dados antes de gravar.</p></div><a class="btn" href="{{ url_for('imports.index') }}">Cancelar</a></div>
+<div class="kpi-grid five">
+  <div class="kpi"><span>Registros</span><strong>{{ summary.total }}</strong></div>
+  <div class="kpi"><span>Motoristas preenchidos</span><strong>{{ summary.motoristas }}</strong></div>
+  <div class="kpi"><span>Logins preenchidos</span><strong>{{ summary.logins }}</strong></div>
+  <div class="kpi"><span>Valor total</span><strong>R$ {{ '%.2f'|format(summary.valor_total or 0) }}</strong></div>
+  <div class="kpi"><span>Qualidade estimada</span><strong>{{ '%.1f'|format(summary.qualidade) }}%</strong></div>
+</div>
+<div class="grid two">
+  <div class="panel"><h2>Colunas reconhecidas</h2><div class="chips">{% for field,col in mapping.items() %}<span class="chip">{{ field }} ← {{ col }}</span>{% endfor %}</div></div>
+  <div class="panel"><h2>Validação</h2><div class="stack-list">
+    <div><strong>Endereços</strong><span>{{ summary.enderecos }} de {{ summary.total }}</span></div>
+    <div><strong>Datas</strong><span>{{ summary.datas }} de {{ summary.total }}</span></div>
+    <div><strong>Horas</strong><span>{{ summary.horas }} de {{ summary.total }}</span></div>
+    <div><strong>Semanas detectadas</strong><span>{{ summary.semanas|join(', ') if summary.semanas else 'Não informada' }}</span></div>
+  </div></div>
+</div>
+<div class="panel"><div class="panel-head"><div><h2>Prévia das primeiras linhas</h2><p>Os valores abaixo ainda não foram gravados.</p></div></div>
+<div class="table-wrap"><table><thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr>{% for h in headers %}<td>{{ row.get(h, '') }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div>
+<form method="post" action="{{ url_for('imports.confirmar') }}" class="form-grid one">
+  <input type="hidden" name="stored_name" value="{{ stored_name }}">
+  <input type="hidden" name="original_name" value="{{ original_name }}">
+  <input type="hidden" name="base_id" value="{{ base.id }}">
+  <button class="btn primary" type="submit">Confirmar e importar {{ summary.total }} registros</button>
+</form>
+{% endblock %}

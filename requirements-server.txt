@@ -1,0 +1,5 @@
+-r requirements.txt
+psycopg[binary]>=3.2,<4
+gunicorn>=23,<24
+
+requests>=2.31,<3
