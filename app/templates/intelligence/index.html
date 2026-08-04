@@ -4,9 +4,9 @@
 {% block content %}
 <div class="page-heading command-heading">
   <div><span class="eyebrow">Fase 4</span><h1>Inteligência Operacional</h1><p>Reincidências, risco, eficiência dos procedimentos e comparação entre bases.</p></div>
-  <form class="quick-filters enterprise-filter-bar" method="get">
+  <form id="operational-filter" class="quick-filters enterprise-filter-bar" method="get">
     {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('intelligence.index') }}">Limpar</a>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega e somente semanas/anos existentes no banco.</small>
   </form>
 </div>

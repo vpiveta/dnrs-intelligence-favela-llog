@@ -18,7 +18,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.identity import normalize_address
-from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.date_filters import apply_date_filters, date_filter_context, selected_filter_base_id
 
 bp = Blueprint("geo", __name__, url_prefix="/geo")
 
@@ -113,7 +113,7 @@ def _visible_query():
 
 def _apply_filters(query):
     query = apply_date_filters(query)
-    base_id = request.args.get("base_id", type=int)
+    base_id = selected_filter_base_id()
     motorista = request.args.get("motorista", "").strip()
     login = request.args.get("login", "").strip()
     produto = request.args.get("produto", "").strip()

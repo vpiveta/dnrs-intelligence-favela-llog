@@ -29,13 +29,13 @@
     <span id="geoProgressText" class="geo-progress-text">{{ pendentes|length }} endereço(s) aguardando localização</span>
   </div>
   {% endif %}
-  <form method="get" class="enterprise-filter-bar enterprise-filter-geo">
+  <form id="operational-filter" method="get" class="enterprise-filter-bar enterprise-filter-geo">
     <label class="filter-field wide"><span>Pesquisa</span><input name="q" value="{{ request.args.get('q','') }}" placeholder="Endereço, CEP, TBR ou cliente"></label>
-    {{ operational_fields(bases, request.args.get('base_id'), data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
+    {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
     <label class="filter-field"><span>Motorista</span><select name="motorista"><option value="">Todos os motoristas</option>{% for item in motoristas %}<option value="{{ item }}" {% if request.args.get('motorista') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
     <label class="filter-field"><span>Login</span><select name="login"><option value="">Todos os logins</option>{% for item in logins %}<option value="{{ item }}" {% if request.args.get('login') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
     <label class="filter-field"><span>Categoria/Produto</span><select name="produto"><option value="">Todos</option>{% for item in produtos %}<option value="{{ item }}" {% if request.args.get('produto') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('geo.index') }}">Limpar</a>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega. As semanas e os anos exibidos existem no banco.</small>
   </form>
 </section>

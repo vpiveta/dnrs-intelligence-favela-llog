@@ -1,4 +1,5 @@
 {% macro operational_fields(bases, selected_base, data, weeks, selected_week, years, selected_year, show_base=True) -%}
+  <input type="hidden" name="apply_filters" value="1">
   {% if show_base %}
   <label class="filter-field"><span>Base</span><select name="base_id"><option value="">Todas as bases</option>{% for base in bases %}<option value="{{ base.id }}" {% if selected_base|int == base.id %}selected{% endif %}>{{ base.codigo }}</option>{% endfor %}</select></label>
   {% endif %}

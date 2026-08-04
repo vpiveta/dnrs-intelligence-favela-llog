@@ -11,7 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import critical_context, is_overdue, sla_date, value_risk_level, value_risk_reason
 from app.core.identity import client_address_key, normalize_address, normalize_text
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id
 
 bp = Blueprint("warroom", __name__, url_prefix="/sala-de-guerra")
 
@@ -114,7 +114,7 @@ def _procedure_rows(casos: list[CasoDNR]):
 @bp.route("/")
 @login_required
 def index():
-    base_id = request.args.get("base_id", type=int)
+    base_id = selected_filter_base_id()
     periodo = "all"
     query = apply_date_filters(_scope(db.select(CasoDNR)))
     if base_id and (current_user.can_view_all_bases):

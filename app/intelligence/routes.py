@@ -11,7 +11,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level
 from app.core.identity import client_address_key, normalize_address, normalize_text
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id
 
 bp = Blueprint("intelligence", __name__, url_prefix="/inteligencia")
 
@@ -194,7 +194,7 @@ def _score(caso: CasoDNR, _client_count: Counter, _address_count: Counter) -> tu
 @login_required
 def index():
     periodo = "all"
-    base_id = request.args.get("base_id", type=int)
+    base_id = selected_filter_base_id()
     query = apply_date_filters(_scoped_query())
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)

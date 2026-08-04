@@ -308,3 +308,12 @@ td small.muted{display:block;margin-top:.25rem}
 @media(max-width:1280px){.command-heading{grid-template-columns:1fr}.command-heading>.heading-actions{flex-wrap:wrap}.enterprise-filter-bar{grid-template-columns:repeat(4,minmax(0,1fr))}.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:820px){.enterprise-filter-bar,.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:repeat(2,minmax(0,1fr))}.enterprise-filter-bar .filter-field.wide,.enterprise-filter-cases .filter-field.wide,.enterprise-filter-geo .filter-field.wide{grid-column:1/-1}.geo-status-grid{grid-template-columns:1fr}.geo-progress-wrap{grid-template-columns:1fr}.geo-progress-text{white-space:normal}}
 @media(max-width:560px){.enterprise-filter-bar,.enterprise-filter-cases,.enterprise-filter-geo{grid-template-columns:1fr}.enterprise-filter-bar>*{grid-column:1/-1!important}.geo-toolbar-head{flex-direction:column}.geo-toolbar-head .btn{width:100%}}
+
+
+/* Enterprise 2.0.1 — filtro global persistente */
+.global-context-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 16px;padding:11px 14px;border:1px solid rgba(79,124,255,.28);border-radius:14px;background:rgba(79,124,255,.08);color:#dce7fb}
+.global-context-main{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px}
+.global-context-main i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(37,194,138,.1)}
+.global-context-main span{color:#9fb0c8;font-weight:700}.global-context-main b{padding:5px 9px;border:1px solid rgba(130,157,212,.2);border-radius:999px;background:#111b2c;color:#eef4ff;font-size:11px}
+.global-context-actions{display:flex;align-items:center;gap:8px}.global-context-actions a{padding:7px 10px;border-radius:9px;color:#9eb3ff;font-size:11px;font-weight:800}.global-context-actions a:hover{background:rgba(79,124,255,.12)}.global-context-actions a.clear{color:#ff9ba4}
+@media(max-width:720px){.global-context-bar{align-items:flex-start;flex-direction:column}.global-context-actions{width:100%;justify-content:flex-end}}

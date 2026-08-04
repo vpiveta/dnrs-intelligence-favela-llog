@@ -4,7 +4,7 @@ import os
 import shutil
 from pathlib import Path
 from datetime import datetime
-from flask import Flask, render_template, current_app, jsonify
+from flask import Flask, render_template, current_app, jsonify, request, session, url_for
 from sqlalchemy import text
 from dotenv import load_dotenv
 from .extensions import db, login_manager
@@ -66,6 +66,37 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(geo_bp)
     app.register_blueprint(warroom_bp)
     app.register_blueprint(analytics_bp)
+
+
+    @app.before_request
+    def persist_operational_filter_context():
+        from flask_login import current_user
+        if not current_user.is_authenticated or request.method != "GET":
+            return None
+        if request.endpoint in {"static", "dashboard.clear_filters"}:
+            return None
+        operational_blueprints = {"dashboard", "analytics", "cases", "geo", "intelligence", "warroom"}
+        if request.blueprint in operational_blueprints:
+            from .core.date_filters import sync_global_filters_from_request
+            sync_global_filters_from_request()
+        return None
+
+    @app.context_processor
+    def inject_global_filter_context():
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return {}
+        from .core.date_filters import global_filter_context, selected_filter_base_id
+        from .models import BaseOperacional
+        context = global_filter_context()
+        base_id = selected_filter_base_id()
+        base = db.session.get(BaseOperacional, base_id) if base_id else None
+        active = bool(base_id or context.get("data") or context.get("semana") or context.get("ano"))
+        return {
+            "global_filter": context,
+            "global_filter_base": base,
+            "global_filter_active": active,
+        }
 
     @app.after_request
     def disable_browser_cache(response):

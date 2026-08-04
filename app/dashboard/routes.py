@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import date
 from decimal import Decimal
 
-from flask import Blueprint, render_template, request, url_for
+from flask import Blueprint, render_template, request, url_for, redirect
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 
@@ -12,7 +12,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level, is_overdue
 from app.core.identity import client_address_key, normalize_address
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id, clear_global_filters
 
 bp = Blueprint("dashboard", __name__)
 
@@ -23,11 +23,21 @@ def _scope(query):
     return query
 
 
+
+@bp.get("/filtros/limpar")
+@login_required
+def clear_filters():
+    clear_global_filters()
+    target = request.args.get("next") or request.referrer or url_for("dashboard.index")
+    if not str(target).startswith("/"):
+        target = url_for("dashboard.index")
+    return redirect(target)
+
 @bp.route("/")
 @login_required
 def index():
     query = apply_date_filters(_scope(db.select(CasoDNR)))
-    base_id = request.args.get("base_id", type=int)
+    base_id = selected_filter_base_id()
     if base_id and current_user.can_view_all_bases:
         query = query.where(CasoDNR.base_id == base_id)
     casos = db.session.scalars(query.order_by(CasoDNR.data_dnr.desc(), CasoDNR.criado_em.desc())).all()
@@ -92,7 +102,7 @@ def index():
         base_obj = base_by_id.get(card_base_id) or db.session.get(BaseOperacional, card_base_id)
         if not base_obj:
             continue
-        params = {"base_id": card_base_id, "semana": week_number}
+        params = {"base_id": card_base_id, "semana": week_number, "set_context": 1, "data": ""}
         if card_year:
             params["ano"] = card_year
         weekly_cards.append({

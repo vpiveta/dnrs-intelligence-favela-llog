@@ -12,7 +12,7 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR, HistoricoCaso
 from app.core.operational_rules import critical_context, critical_reasons, is_overdue, sla_date, value_risk_level
 from app.core.identity import client_address_key, normalize_address
-from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.date_filters import apply_date_filters, date_filter_context, selected_filter_base_id
 
 bp = Blueprint("cases", __name__, url_prefix="/casos")
 
@@ -42,7 +42,7 @@ def index():
     critico = request.args.get("critico", "").strip() == "1"
     risk = request.args.get("risk", "").strip().upper()
     vencido = request.args.get("vencido", "").strip() == "1"
-    base_id = request.args.get("base_id", type=int)
+    base_id = selected_filter_base_id()
     cep4 = request.args.get("cep4", "").strip()
     cliente = request.args.get("cliente", "").strip()
     endereco = request.args.get("endereco", "").strip()

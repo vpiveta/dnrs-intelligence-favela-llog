@@ -38,6 +38,17 @@
     <header class="topbar"><button class="icon-btn" id="menuBtn">☰</button><form class="global-search" action="{{ url_for('cases.index') }}" method="get">⌕ <input name="q" placeholder="Buscar TBR, cliente, endereço..."></form><div class="top-actions"><span class="status-dot"></span> DNR's Intelligence Favela Llog</div></header>
     <section class="page">
       {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+      {% if global_filter_active %}
+      <div class="global-context-bar" aria-label="Filtro global ativo">
+        <div class="global-context-main"><i></i><span>Filtro global ativo</span>
+          {% if global_filter_base %}<b>{{ global_filter_base.codigo }}</b>{% else %}<b>Todas as bases</b>{% endif %}
+          {% if global_filter.semana %}<b>S{{ '%02d'|format(global_filter.semana) }}</b>{% endif %}
+          {% if global_filter.ano %}<b>{{ global_filter.ano }}</b>{% endif %}
+          {% if global_filter.data %}<b>{{ global_filter.data[8:10] }}/{{ global_filter.data[5:7] }}/{{ global_filter.data[:4] }}</b>{% endif %}
+        </div>
+        <div class="global-context-actions"><a href="#operational-filter">Alterar filtro</a><a class="clear" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a></div>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </section>
   </main>

@@ -5,9 +5,9 @@
 {% block content %}
 <div class="page-heading command-heading">
   <div><span class="eyebrow">Análises executivas</span><h1>Analytics Intelligence</h1><p>{% if consolidated %}Visão consolidada com cada indicador identificado pela base de origem.{% else %}Análise individual da base selecionada.{% endif %}</p></div>
-  <form class="quick-filters enterprise-filter-bar" method="get">
+  <form id="operational-filter" class="quick-filters enterprise-filter-bar" method="get">
     {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('analytics.index') }}">Limpar</a>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega. As semanas e anos exibidos existem no banco para a base selecionada.</small>
   </form>
 </div>
