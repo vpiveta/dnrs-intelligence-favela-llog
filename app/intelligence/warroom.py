@@ -226,14 +226,18 @@ def index():
         })
     base_rows.sort(key=lambda x: (x["abertos"], x["total"]), reverse=True)
 
-    return render_template(
-        "intelligence/warroom.html",
-        total=len(casos), criticos=len(criticos), altos=len(altos), medios=len(medios), baixos=len(baixos), vencidos=len(vencidos),
-        sem_procedimento=len(sem_procedimento), aguardando=len(aguardando),
-        valor_risco=valor_risco, alertas=alertas, casos_prioritarios=scored[:12],
-        tendencias_endereco=tendencias_endereco, tendencias_motorista=tendencias_motorista,
-        tendencias_login=tendencias_login, tendencias_produto=tendencias_produto,
-        procedimentos=procedimentos, bases=bases, base_rows=base_rows,
-        reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
-        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls, active_filters=active_filter_params(), **date_filter_context(),
-    )
+    template_context = date_filter_context()
+    template_context.update({
+        "total": len(casos), "criticos": len(criticos), "altos": len(altos),
+        "medios": len(medios), "baixos": len(baixos), "vencidos": len(vencidos),
+        "sem_procedimento": len(sem_procedimento), "aguardando": len(aguardando),
+        "valor_risco": valor_risco, "alertas": alertas,
+        "casos_prioritarios": scored[:12], "tendencias_endereco": tendencias_endereco,
+        "tendencias_motorista": tendencias_motorista, "tendencias_login": tendencias_login,
+        "tendencias_produto": tendencias_produto, "procedimentos": procedimentos,
+        "bases": bases, "base_rows": base_rows, "reincidentes": reincidentes,
+        "nomes_multiplos_enderecos": nomes_multiplos_enderecos[:10],
+        "periodo": periodo, "critical_context": critical,
+        "priority_urls": priority_urls, "active_filters": active_filter_params(),
+    })
+    return render_template("intelligence/warroom.html", **template_context)

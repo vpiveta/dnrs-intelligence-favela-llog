@@ -254,13 +254,15 @@ def index():
     if not insights:
         insights.append({"tipo": "info", "titulo": "Base em formação", "texto": "Ainda não há volume suficiente para recomendações conclusivas.", "acao": "Continue importando e tratando os casos."})
 
-    return render_template(
-        "intelligence/index.html",
-        casos=scored[:12], total=total, taxa_resolucao=taxa_resolucao,
-        reinc_clientes=reinc_clientes, reinc_enderecos=reinc_enderecos,
-        criticos=criticos, valor_risco=valor_risco, top_clientes=top_clientes,
-        top_enderecos=top_enderecos, top_motoristas=top_motoristas,
-        top_produtos=top_produtos, procedimentos=procedimentos,
-        bases=bases, base_stats=base_stats, insights=insights,
-        periodo=periodo, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora, **date_filter_context(),
-    )
+    template_context = date_filter_context()
+    template_context.update({
+        "casos": scored[:12], "total": total, "taxa_resolucao": taxa_resolucao,
+        "reinc_clientes": reinc_clientes, "reinc_enderecos": reinc_enderecos,
+        "criticos": criticos, "valor_risco": valor_risco, "top_clientes": top_clientes,
+        "top_enderecos": top_enderecos, "top_motoristas": top_motoristas,
+        "top_produtos": top_produtos, "procedimentos": procedimentos,
+        "bases": bases, "base_stats": base_stats, "insights": insights,
+        "periodo": periodo, "faixas_horario": faixas_horario,
+        "total_com_hora": total_com_hora,
+    })
+    return render_template("intelligence/index.html", **template_context)

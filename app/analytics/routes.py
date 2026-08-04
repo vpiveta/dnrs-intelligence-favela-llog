@@ -280,12 +280,17 @@ def index():
         },
     }
 
-    return render_template(
-        "analytics/index.html", bases=bases, base_id=base_id, periodo=periodo,
-        total=total, resolvidos=resolvidos, taxa=round(resolvidos / total * 100) if total else 0,
-        criticos=risk_counts["CRITICO"], altos=risk_counts["ALTO"], medios=risk_counts["MEDIO"], baixos=risk_counts["BAIXO"],
-        vencidos=len(overdue_cases), valor_total=valor_total, cep4_critico=cep4_critico,
-        chart_data=chart_data, base_rows=base_rows,
-        comparison=comparison[:30], period_info=period_info, opportunities=opportunities,
-        consolidated=consolidated, active_filters=active_filter_params(), **date_filter_context(),
-    )
+    template_context = date_filter_context()
+    template_context.update({
+        "bases": bases, "periodo": periodo,
+        "total": total, "resolvidos": resolvidos,
+        "taxa": round(resolvidos / total * 100) if total else 0,
+        "criticos": risk_counts["CRITICO"], "altos": risk_counts["ALTO"],
+        "medios": risk_counts["MEDIO"], "baixos": risk_counts["BAIXO"],
+        "vencidos": len(overdue_cases), "valor_total": valor_total,
+        "cep4_critico": cep4_critico, "chart_data": chart_data,
+        "base_rows": base_rows, "comparison": comparison[:30],
+        "period_info": period_info, "opportunities": opportunities,
+        "consolidated": consolidated, "active_filters": active_filter_params(),
+    })
+    return render_template("analytics/index.html", **template_context)

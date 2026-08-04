@@ -123,10 +123,12 @@ def index():
         {"tipo": "info", "icone": "⌖", "titulo": f"{enderecos_reincidentes} endereços reincidentes", "texto": "Locais com mais de uma ocorrência", "url": url_for("cases.index", view="recurrent_addresses", **common)},
     ]
 
-    return render_template(
-        "dashboard/index.html", total=total, pendentes=pendentes, criticos=criticos,
-        concluidos=concluidos, concluidos_hoje=concluidos_hoje, valor=valor,
-        taxa=taxa, prioridades=prioridades, casos=casos[:8], bases=bases,
-        comparativo=comparativo, base_id=base_id, maior_base=maior_base,
-        weekly_cards=weekly_cards, **date_filter_context(),
-    )
+    template_context = date_filter_context()
+    template_context.update({
+        "total": total, "pendentes": pendentes, "criticos": criticos,
+        "concluidos": concluidos, "concluidos_hoje": concluidos_hoje, "valor": valor,
+        "taxa": taxa, "prioridades": prioridades, "casos": casos[:8], "bases": bases,
+        "comparativo": comparativo, "maior_base": maior_base,
+        "weekly_cards": weekly_cards,
+    })
+    return render_template("dashboard/index.html", **template_context)
