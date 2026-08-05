@@ -57,7 +57,7 @@
 <section class="panel">
   <div class="panel-head"><div><h2>Linha do tempo de tratativas</h2><p>Orientações, feedbacks, reciclagens e advertências registradas.</p></div></div>
   <div class="driver-timeline">
-    {% for item in state.tratativas %}<div><i></i><section><strong>{{ item.tipo }}</strong><p>{{ item.descricao }}</p><small>{{ item.criado_em.strftime('%d/%m/%Y %H:%M') }} · {{ item.usuario.nome }}{% if item.semana_numero %} · S{{ '%02d'|format(item.semana_numero) }}{% endif %}</small></section></div>{% endfor %}
+    {% for item in state.tratativas %}<div><i></i><section><strong>{{ item.tipo }}</strong><p>{{ item.descricao }}</p><small>{{ item.criado_em.strftime('%d/%m/%Y %H:%M') }} · {{ item.usuario.nome if item.usuario else 'Usuário removido' }}{% if item.semana_numero %} · S{{ '%02d'|format(item.semana_numero) }}{% endif %}</small></section></div>{% endfor %}
   </div>
 </section>
 {% endif %}
@@ -67,14 +67,14 @@
   <div class="table-wrap"><table class="data-table">
     <thead><tr><th>TBR</th><th>Semana</th><th>Data</th><th>Cliente</th><th>Endereço</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead>
     <tbody>{% for case in cases %}<tr>
-      <td><a class="tbr-link" href="{{ url_for('cases.detail', caso_id=case.id) }}">{{ case.tbr }}</a></td>
+      <td><a class="tbr-link" href="{{ url_for('cases.detalhe', caso_id=case.id) }}">{{ case.tbr }}</a></td>
       <td>S{{ '%02d'|format(case.semana_numero or 0) }}</td>
       <td>{{ case.data_dnr.strftime('%d/%m/%Y') if case.data_dnr else '—' }}</td>
       <td>{{ case.cliente }}</td><td class="address-cell">{{ case.endereco or '—' }}</td>
       <td>{{ case.categoria or 'Sem categoria' }}</td>
       <td>R$ {{ '%.2f'|format(case.valor or 0)|replace('.', ',') }}</td>
       <td><span class="status-pill">{{ case.status }}</span></td>
-      <td><a class="btn ghost compact" href="{{ url_for('cases.detail', caso_id=case.id) }}">Abrir</a></td>
+      <td><a class="btn ghost compact" href="{{ url_for('cases.detalhe', caso_id=case.id) }}">Abrir</a></td>
     </tr>{% endfor %}</tbody>
   </table></div>
 </section>
