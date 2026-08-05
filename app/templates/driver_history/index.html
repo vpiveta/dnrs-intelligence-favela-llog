@@ -17,14 +17,16 @@
 <section class="driver-history-grid">
 {% for row in rows %}
 <article class="panel driver-history-card severity-{% if row.latest >= 8 %}critical{% elif row.latest >= 5 %}high{% elif row.latest >= 3 %}medium{% else %}low{% endif %}">
+  <a class="driver-card-link" href="{{ url_for('driver_history.detail', **row.detail_params) }}" aria-label="Abrir ficha completa de {{ row.motorista }}"></a>
   <div class="driver-history-head">
-    <div><span class="badge">{{ row.base.codigo if row.base else 'BASE' }}</span><h2>{{ row.motorista }}</h2><p>{{ row.total }} DNR nas últimas {{ week_keys|length }} semanas</p></div>
+    <div><span class="badge">{{ row.base.codigo if row.base else 'BASE' }}</span><h2><a class="driver-name-link" href="{{ url_for('driver_history.detail', **row.detail_params) }}">{{ row.motorista }}</a></h2><p>{{ row.total }} DNR nas últimas {{ week_keys|length }} semanas</p><span class="score-chip score-{{ row.score_label|lower }}">Score {{ row.score }} · {{ row.score_label }}</span></div>
     <div class="trend trend-{{ row.trend|lower }}"><strong>{{ row.latest }}</strong><span>DNR atual</span><b>{% if row.delta > 0 %}▲ +{{ row.delta }}{% elif row.delta < 0 %}▼ {{ row.delta }}{% else %}● 0{% endif %}</b></div>
   </div>
   <div class="driver-week-series">
     {% for value in row['values'] %}<div class="week-value intensity-{{ [value,9]|min }}"><strong>{{ value }}</strong><span>S{{ '%02d'|format(week_keys[loop.index0][1]) }}</span></div>{% endfor %}
   </div>
   <div class="driver-status-line">
+    <a class="btn ghost driver-open-button" href="{{ url_for('driver_history.detail', **row.detail_params) }}">Ver todos os DNR</a>
     <span class="status-pill {{ row.trend|lower }}">{% if row.trend=='ALTA' %}Crescimento{% elif row.trend=='QUEDA' %}Redução{% else %}Estável{% endif %}</span>
     {% if row.state and row.state.bloqueado %}<span class="status-pill blocked">Bloqueado</span>{% elif row.suggest_block %}<span class="status-pill warning">Bloqueio recomendado</span>{% endif %}
   </div>

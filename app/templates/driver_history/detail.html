@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{{ motorista }} · Histórico de Motoristas{% endblock %}
+{% block content %}
+<section class="command-heading driver-profile-heading">
+  <div>
+    <span class="eyebrow">FICHA COMPLETA DO MOTORISTA</span>
+    <h1>{{ motorista }}</h1>
+    <p>{{ base.codigo if base else 'BASE' }} · Todos os DNR deduplicados vinculados ao motorista.</p>
+  </div>
+  <div class="heading-actions">
+    <a class="btn ghost" href="{{ url_for('driver_history.index', **active_filters) }}">← Voltar ao histórico</a>
+  </div>
+</section>
+
+<section class="driver-profile-kpis">
+  <article class="metric-card"><span>Total de DNR</span><strong>{{ cases|length }}</strong><small>Histórico completo</small></article>
+  <article class="metric-card"><span>Valor acumulado</span><strong>R$ {{ '%.2f'|format(total_value)|replace('.', ',') }}</strong><small>Impacto financeiro</small></article>
+  <article class="metric-card"><span>Score operacional</span><strong>{{ score }}</strong><small>{{ score_label }}</small></article>
+  <article class="metric-card"><span>Média semanal</span><strong>{{ average }}</strong><small>DNR por semana</small></article>
+  <article class="metric-card"><span>Clientes reincidentes</span><strong>{{ recurrent_clients }}</strong><small>Com mais de um DNR</small></article>
+  <article class="metric-card"><span>Endereços reincidentes</span><strong>{{ recurrent_addresses }}</strong><small>Com mais de um DNR</small></article>
+</section>
+
+<section class="profile-layout">
+  <article class="panel driver-evolution-panel">
+    <div class="panel-head"><div><h2>Evolução das últimas cinco semanas</h2><p>Comparativo semanal do motorista.</p></div><span class="status-pill {{ trend|lower }}">{% if trend == 'ALTA' %}Crescimento{% elif trend == 'QUEDA' %}Redução{% else %}Estável{% endif %}</span></div>
+    <div class="driver-line-chart" role="img" aria-label="Evolução semanal de DNR do motorista">
+      {% set max_value = values|max if values else 1 %}
+      {% for value in values %}
+      <div class="driver-line-point">
+        <span class="point-value">{{ value }}</span>
+        <div class="point-track"><i style="height: {{ ((value / (max_value if max_value else 1)) * 100)|round }}%"></i></div>
+        <small>S{{ '%02d'|format(week_keys[loop.index0][1]) }}</small>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="profile-insight"><strong>Análise automática</strong><p>{{ insight }} {% if variation %}Variação entre a primeira e a última semana: {{ variation }}%.{% endif %}</p></div>
+    <div class="week-extremes">
+      <span>Melhor semana: <strong>{% if best_week %}S{{ '%02d'|format(best_week[0][1]) }} · {{ best_week[1] }} DNR{% else %}—{% endif %}</strong></span>
+      <span>Pior semana: <strong>{% if worst_week %}S{{ '%02d'|format(worst_week[0][1]) }} · {{ worst_week[1] }} DNR{% else %}—{% endif %}</strong></span>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><h2>Categorias críticas</h2><p>Concentração por categoria, sem duplicar produtos.</p></div></div>
+    <div class="category-rank">
+      {% for category, amount in categories %}<div><span>{{ category }}</span><strong>{{ amount }}</strong><i style="width: {{ ((amount / (categories[0][1] if categories else 1)) * 100)|round }}%"></i></div>{% else %}<p class="muted">Sem categorias informadas.</p>{% endfor %}
+    </div>
+    <div class="driver-current-state">
+      <h3>Status de acompanhamento</h3>
+      {% if state and state.bloqueado %}<span class="status-pill blocked">Motorista bloqueado</span><p>{{ state.motivo_bloqueio or 'Sem motivo informado.' }}</p>{% elif latest >= (state.limite_bloqueio if state else 8) %}<span class="status-pill warning">Bloqueio recomendado</span>{% else %}<span class="status-pill queda">Em acompanhamento</span>{% endif %}
+    </div>
+  </article>
+</section>
+
+{% if state and state.tratativas %}
+<section class="panel">
+  <div class="panel-head"><div><h2>Linha do tempo de tratativas</h2><p>Orientações, feedbacks, reciclagens e advertências registradas.</p></div></div>
+  <div class="driver-timeline">
+    {% for item in state.tratativas %}<div><i></i><section><strong>{{ item.tipo }}</strong><p>{{ item.descricao }}</p><small>{{ item.criado_em.strftime('%d/%m/%Y %H:%M') }} · {{ item.usuario.nome }}{% if item.semana_numero %} · S{{ '%02d'|format(item.semana_numero) }}{% endif %}</small></section></div>{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="panel driver-records-panel">
+  <div class="panel-head"><div><h2>Todos os registros de DNR</h2><p>{{ cases|length }} ocorrências deduplicadas por base + TBR.</p></div></div>
+  <div class="table-wrap"><table class="data-table">
+    <thead><tr><th>TBR</th><th>Semana</th><th>Data</th><th>Cliente</th><th>Endereço</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for case in cases %}<tr>
+      <td><a class="tbr-link" href="{{ url_for('cases.detail', caso_id=case.id) }}">{{ case.tbr }}</a></td>
+      <td>S{{ '%02d'|format(case.semana_numero or 0) }}</td>
+      <td>{{ case.data_dnr.strftime('%d/%m/%Y') if case.data_dnr else '—' }}</td>
+      <td>{{ case.cliente }}</td><td class="address-cell">{{ case.endereco or '—' }}</td>
+      <td>{{ case.categoria or 'Sem categoria' }}</td>
+      <td>R$ {{ '%.2f'|format(case.valor or 0)|replace('.', ',') }}</td>
+      <td><span class="status-pill">{{ case.status }}</span></td>
+      <td><a class="btn ghost compact" href="{{ url_for('cases.detail', caso_id=case.id) }}">Abrir</a></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
