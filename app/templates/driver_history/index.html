@@ -23,7 +23,7 @@
     <div class="trend trend-{{ row.trend|lower }}"><strong>{{ row.latest }}</strong><span>DNR atual</span><b>{% if row.delta > 0 %}▲ +{{ row.delta }}{% elif row.delta < 0 %}▼ {{ row.delta }}{% else %}● 0{% endif %}</b></div>
   </div>
   <div class="driver-week-series">
-    {% for value in row.values %}<div class="week-value intensity-{{ [value,9]|min }}"><strong>{{ value }}</strong><span>S{{ '%02d'|format(week_keys[loop.index0][1]) }}</span></div>{% endfor %}
+    {% for value in row['values'] %}<div class="week-value intensity-{{ [value,9]|min }}"><strong>{{ value }}</strong><span>S{{ '%02d'|format(week_keys[loop.index0][1]) }}</span></div>{% endfor %}
   </div>
   <div class="driver-status-line">
     <span class="status-pill {{ row.trend|lower }}">{% if row.trend=='ALTA' %}Crescimento{% elif row.trend=='QUEDA' %}Redução{% else %}Estável{% endif %}</span>
