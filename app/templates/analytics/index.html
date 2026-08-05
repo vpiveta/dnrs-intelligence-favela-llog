@@ -31,7 +31,8 @@
   <section class="panel chart-panel"><div class="panel-head"><div><h2>Faixas de risco</h2><p>Classificação automática exclusivamente pelo valor do produto.</p></div></div><canvas id="chartRisco"></canvas></section>
   <section class="panel chart-panel"><div class="panel-head"><div><h2>Evolução semanal</h2><p>Comparação automática por semana.</p></div></div><canvas id="chartSemana"></canvas></section>
   <section class="panel chart-panel"><div class="panel-head"><div><h2>Horários das ocorrências</h2><p>Rosca com participação percentual de cada faixa; clique para consultar os casos.</p></div></div><canvas id="chartHorario"></canvas></section>
-  <section class="panel chart-panel driver-chart"><div class="panel-head"><div><h2>Top 5 motoristas</h2><p>Os cinco motoristas com maior volume de DNR no período, com o total exibido nas barras.</p></div></div><canvas id="chartMotorista"></canvas></section>
+  <section class="panel chart-panel driver-chart"><div class="panel-head"><div><h2>Motoristas</h2><p>Top 12 agentes; os demais são agrupados em “Outros” para manter a leitura limpa.</p></div></div><canvas id="chartMotorista"></canvas></section>
+  <section class="panel chart-panel"><div class="panel-head"><div><h2>Logins utilizados</h2><p>Top logins vinculados aos casos.</p></div></div><canvas id="chartLogin"></canvas></section>
   <section class="panel chart-panel"><div class="panel-head"><div><h2>CEP4</h2><p>Quatro primeiros dígitos. Clique para abrir o mapa.</p></div></div><canvas id="chartCep4"></canvas></section>
   <section class="panel chart-panel"><div class="panel-head"><div><h2>Categorias de produtos</h2><p>Rosca com participação de cada categoria. Clique em uma fatia para abrir somente os DNRs correspondentes.</p></div></div><canvas id="chartCategoria"></canvas></section>
   <section class="panel chart-panel"><div class="panel-head"><div><h2>Participação por base</h2><p>Distribuição percentual do volume total. Clique para analisar a base individualmente.</p></div></div><canvas id="chartBase"></canvas></section>
@@ -67,34 +68,6 @@ const palette=['#4f7cff','#25c28a','#f5a524','#f45b69','#9b7cff','#36b9cc','#ff8
 const baseIds={{ base_rows|map(attribute='id')|list|tojson }};
 const activeFilters={{ active_filters|tojson }};
 Chart.defaults.color=chartText; Chart.defaults.font.family='Inter,Segoe UI,sans-serif'; Chart.defaults.borderColor=chartGrid;
-const valueLabelsPlugin={
- id:'valueLabels',
- afterDatasetsDraw(chart){
-  if(!['bar','doughnut','pie'].includes(chart.config.type))return;
-  const {ctx}=chart; ctx.save(); ctx.font='700 12px Inter, Segoe UI, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  chart.data.datasets.forEach((dataset,datasetIndex)=>{
-   const meta=chart.getDatasetMeta(datasetIndex); if(meta.hidden)return;
-   meta.data.forEach((element,index)=>{
-    const value=Number(dataset.data[index]||0); if(!value)return;
-    let x,y;
-    if(chart.config.type==='bar'){
-      const pos=element.tooltipPosition();
-      if(chart.options.indexAxis==='y'){x=pos.x+18;y=pos.y;}else{x=pos.x;y=pos.y-12;}
-      ctx.fillStyle=chartText;
-    }else{
-      const props=element.getProps(['x','y','startAngle','endAngle','innerRadius','outerRadius'],true);
-      const angle=(props.startAngle+props.endAngle)/2;
-      const radius=(props.innerRadius+props.outerRadius)/2;
-      x=props.x+Math.cos(angle)*radius; y=props.y+Math.sin(angle)*radius;
-      ctx.fillStyle='#ffffff';
-    }
-    ctx.fillText(fmt(value),x,y);
-   });
-  });
-  ctx.restore();
- }
-};
-Chart.register(valueLabelsPlugin);
 const fmt=(v)=>Number(v||0).toLocaleString('pt-BR');
 function colors(n,alpha=.78){return Array.from({length:n},(_,i)=>palette[i%palette.length]+(alpha<1?Math.round(alpha*255).toString(16).padStart(2,'0'):''));}
 function common(horizontal=false,circular=false,onClick=null){return {responsive:true,maintainAspectRatio:false,indexAxis:horizontal?'y':'x',layout:{padding:{top:8,right:12,bottom:4,left:4}},plugins:{legend:{display:circular,position:'bottom',labels:{boxWidth:11,usePointStyle:true,padding:16,color:chartText}},tooltip:{backgroundColor:'#0b1220',borderColor:'#334155',borderWidth:1,titleColor:'#fff',bodyColor:'#dbe7f7',padding:12,callbacks:{label:(ctx)=>{const total=ctx.dataset.data.reduce((a,b)=>a+Number(b||0),0),value=Number(ctx.raw||0),pct=total?Math.round(value/total*100):0;return ` ${ctx.label}: ${fmt(value)} (${pct}%)`;}}}},scales:circular?{}:{x:{grid:{display:horizontal,color:chartGrid},ticks:{color:chartMuted,autoSkip:true,maxRotation:0}},y:{beginAtZero:true,grid:{display:!horizontal,color:chartGrid},ticks:{color:chartText,precision:0,autoSkip:false}}},animation:{duration:650,easing:'easeOutQuart'},onClick:onClick||undefined};}
@@ -107,7 +80,7 @@ function makeChart(id,key,type='bar',horizontal=false,clickMode='cases'){
 function makeMulti(id,key){const el=document.getElementById(id),d=analyticsData[key];if(!el||!d)return false;new Chart(el,{type:'line',data:{labels:d.labels,datasets:d.datasets.map((x,i)=>({label:x.label,data:x.data,borderColor:palette[i%palette.length],backgroundColor:palette[i%palette.length]+'22',pointBackgroundColor:palette[i%palette.length],pointRadius:3,pointHoverRadius:6,borderWidth:3,tension:.34,fill:false}))},options:common(false,false)});return true;}
 if(!makeMulti('chartDia','dia_multi'))makeChart('chartDia','dia','line');
 if(!makeMulti('chartSemana','semana_multi'))makeChart('chartSemana','semana','line');
-makeChart('chartHorario','horario','doughnut');makeChart('chartMotorista','motorista','bar',true);makeChart('chartCep4','cep4','bar',true,'geo');makeChart('chartCategoria','categoria','doughnut');makeChart('chartBase','base','doughnut',false,'base');makeChart('chartBaseValor','base_valor','doughnut',false,'base');makeChart('chartRisco','risco','doughnut');makeChart('chartStatus','status','doughnut');
+makeChart('chartHorario','horario','doughnut');makeChart('chartMotorista','motorista','bar',true);makeChart('chartLogin','login','bar',true);makeChart('chartCep4','cep4','bar',true,'geo');makeChart('chartCategoria','categoria','doughnut');makeChart('chartBase','base','doughnut',false,'base');makeChart('chartBaseValor','base_valor','doughnut',false,'base');makeChart('chartRisco','risco','doughnut');makeChart('chartStatus','status','doughnut');
 const br=document.getElementById('chartBaseRisco');
 if(br){
   const d=analyticsData.base_risco;

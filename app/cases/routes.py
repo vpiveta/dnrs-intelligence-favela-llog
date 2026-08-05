@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 import re
@@ -9,10 +10,11 @@ from flask_login import current_user, login_required
 from sqlalchemy import or_
 
 from app.extensions import db
-from app.models import BaseOperacional, CasoDNR, HistoricoCaso
+from app.models import BaseOperacional, CasoDNR, HistoricoCaso, MotoristaAcompanhamento
 from app.core.operational_rules import critical_context, critical_reasons, is_overdue, sla_date, value_risk_level
-from app.core.identity import client_address_key, normalize_address
+from app.core.identity import client_address_key, normalize_address, normalize_text
 from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.deduplication import deduplicate_cases
 
 bp = Blueprint("cases", __name__, url_prefix="/casos")
 
@@ -30,6 +32,51 @@ def _visible_query():
     if not current_user.can_view_all_bases:
         query = query.where(CasoDNR.base_id == current_user.base_id)
     return query
+
+def _driver_history_snapshot(caso: CasoDNR | None):
+    """Monta o mesmo resumo semanal da tela Histórico de Motoristas para um caso pesquisado."""
+    if not caso or not (caso.motorista or "").strip():
+        return None
+    driver_key = normalize_text(caso.motorista or "")
+    query = _visible_query().where(CasoDNR.base_id == caso.base_id)
+    all_cases = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.ano.desc(), CasoDNR.semana_numero.desc())).all())
+    driver_cases = [
+        item for item in all_cases
+        if normalize_text(item.motorista or "") == driver_key and item.semana_numero
+    ]
+    week_keys = sorted({
+        (int(item.ano or datetime.now().year), int(item.semana_numero))
+        for item in driver_cases
+    })[-5:]
+    counts = Counter((int(item.ano or datetime.now().year), int(item.semana_numero)) for item in driver_cases)
+    values = [counts.get(key, 0) for key in week_keys]
+    latest = values[-1] if values else 0
+    previous = values[-2] if len(values) > 1 else 0
+    delta = latest - previous
+    trend = "ALTA" if delta > 0 else "QUEDA" if delta < 0 else "ESTAVEL"
+    state = db.session.scalar(
+        db.select(MotoristaAcompanhamento).where(
+            MotoristaAcompanhamento.base_id == caso.base_id,
+            MotoristaAcompanhamento.motorista_chave == driver_key,
+        )
+    )
+    threshold = state.limite_bloqueio if state else 8
+    return {
+        "motorista": caso.motorista.strip(),
+        "base": caso.base,
+        "base_id": caso.base_id,
+        "week_keys": week_keys,
+        "values": values,
+        "total": sum(values),
+        "latest": latest,
+        "previous": previous,
+        "delta": delta,
+        "trend": trend,
+        "state": state,
+        "threshold": threshold,
+        "suggest_block": latest >= threshold,
+    }
+
 
 
 @bp.route("/")
@@ -157,10 +204,20 @@ def index():
         casos = [caso for caso in casos if value_risk_level(caso.valor) == risk]
     if vencido:
         casos = [caso for caso in casos if caso.sla_vencido_auto]
+    exact_tbr_case = None
+    driver_history = None
+    if busca and re.fullmatch(r"TBR\d{6,15}", busca.upper()):
+        exact_tbr_case = next((item for item in casos if (item.tbr or "").upper() == busca.upper()), None)
+        driver_history = _driver_history_snapshot(exact_tbr_case)
+
     bases = db.session.scalars(db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)).all()
     if not current_user.can_view_all_bases:
         bases = [current_user.base]
-    return render_template("cases/index.html", casos=casos, bases=bases, analysis_label=analysis_labels.get(view), active_view=view, **date_filter_context())
+    return render_template(
+        "cases/index.html", casos=casos, bases=bases, analysis_label=analysis_labels.get(view),
+        active_view=view, exact_tbr_case=exact_tbr_case, driver_history=driver_history,
+        **date_filter_context(),
+    )
 
 
 @bp.route("/novo", methods=["GET", "POST"])
@@ -257,4 +314,4 @@ def detalhe(caso_id: int):
     caso.prioridade_automatica = value_risk_level(caso.valor)
     caso.sla_vencimento_auto = sla_date(caso)
     caso.sla_vencido_auto = is_overdue(caso)
-    return render_template("cases/detail.html", caso=caso, back_url=back_url)
+    return render_template("cases/detail.html", caso=caso, back_url=back_url, driver_history=_driver_history_snapshot(caso))

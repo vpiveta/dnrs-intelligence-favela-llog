@@ -10,7 +10,6 @@
     <small class="filter-help">Os filtros permanecem ativos ao navegar para as demais análises.</small>
   </form>
 </section>
-{% if not history_ready %}<div class="alert warning">O histórico foi aberto em modo de leitura. Atualize a página após o banco concluir a criação das tabelas de acompanhamento.</div>{% endif %}
 <section class="panel driver-history-summary">
   <div class="panel-head"><div><h2>Evolução semanal</h2><p>Os registros são deduplicados por base e TBR antes da contagem.</p></div><span class="badge">{{ rows|length }} motoristas</span></div>
   {% if week_keys %}<div class="week-labels">{% for year, week in week_keys %}<span>S{{ '%02d'|format(week) }}<small>{{ year }}</small></span>{% endfor %}</div>{% endif %}
@@ -19,7 +18,7 @@
 {% for row in rows %}
 <article class="panel driver-history-card severity-{% if row.latest >= 8 %}critical{% elif row.latest >= 5 %}high{% elif row.latest >= 3 %}medium{% else %}low{% endif %}">
   <div class="driver-history-head">
-    <div><span class="badge">{{ row.base_code }}</span><h2>{{ row.motorista }}</h2><p>{{ row.total }} DNR nas últimas {{ week_keys|length }} semanas</p></div>
+    <div><span class="badge">{{ row.base.codigo if row.base else 'BASE' }}</span><h2>{{ row.motorista }}</h2><p>{{ row.total }} DNR nas últimas {{ week_keys|length }} semanas</p></div>
     <div class="trend trend-{{ row.trend|lower }}"><strong>{{ row.latest }}</strong><span>DNR atual</span><b>{% if row.delta > 0 %}▲ +{{ row.delta }}{% elif row.delta < 0 %}▼ {{ row.delta }}{% else %}● 0{% endif %}</b></div>
   </div>
   <div class="driver-week-series">

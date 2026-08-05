@@ -70,7 +70,7 @@
       {% for item in casos_prioritarios %}
       <a class="score-row" href="{{ url_for('cases.detalhe', caso_id=item.caso.id, next=request.full_path) }}">
         <div class="score-ring level-{{ item.nivel|lower }}">{{ item.score }}</div>
-        <div><strong><span class="base-tag">{{ item.caso.base.codigo }}</span> {{ item.caso.codigo }} · {{ item.caso.tbr }}</strong><span>{{ item.caso.cliente }} · {{ item.caso.motorista or 'Motorista não informado' }} · {{ item.caso.login_utilizado or 'Login não informado' }}</span><small>{{ item.motivos|join(' · ') }}</small></div>
+        <div><strong><span class="base-tag">{{ item.caso.base.codigo }}</span> {{ item.caso.tbr }}</strong><span>{{ item.caso.cliente }} · {{ item.caso.motorista or 'Motorista não informado' }} · {{ item.caso.login_utilizado or 'Login não informado' }}</span><small>{{ item.motivos|join(' · ') }}</small></div>
         <span class="badge priority-{{ item.nivel|lower }}">{{ item.nivel }}</span>
       </a>
       {% else %}<div class="empty">Nenhum caso para priorizar.</div>{% endfor %}

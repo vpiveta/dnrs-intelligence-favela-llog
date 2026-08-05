@@ -1,0 +1,30 @@
+{% if driver_history %}
+<article class="panel driver-history-card severity-{% if driver_history.latest >= 8 %}critical{% elif driver_history.latest >= 5 %}high{% elif driver_history.latest >= 3 %}medium{% else %}low{% endif %}">
+  <div class="driver-history-head">
+    <div>
+      <span class="badge">{{ driver_history.base.codigo if driver_history.base else 'BASE' }}</span>
+      <h2>Histórico do motorista · {{ driver_history.motorista }}</h2>
+      <p>{{ driver_history.total }} DNR nas últimas {{ driver_history.week_keys|length }} semanas disponíveis</p>
+    </div>
+    <div class="trend trend-{{ driver_history.trend|lower }}">
+      <strong>{{ driver_history.latest }}</strong><span>DNR atual</span>
+      <b>{% if driver_history.delta > 0 %}▲ +{{ driver_history.delta }}{% elif driver_history.delta < 0 %}▼ {{ driver_history.delta }}{% else %}● 0{% endif %}</b>
+    </div>
+  </div>
+  {% if driver_history.week_keys %}
+  <div class="driver-week-series">
+    {% for value in driver_history['values'] %}
+    <div class="week-value intensity-{{ [value,9]|min }}"><strong>{{ value }}</strong><span>S{{ '%02d'|format(driver_history.week_keys[loop.index0][1]) }}</span></div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="empty compact">Ainda não há semanas suficientes para comparação.</div>{% endif %}
+  <div class="driver-status-line">
+    <span class="status-pill {{ driver_history.trend|lower }}">{% if driver_history.trend=='ALTA' %}Crescimento{% elif driver_history.trend=='QUEDA' %}Redução{% else %}Estável{% endif %}</span>
+    {% if driver_history.state and driver_history.state.bloqueado %}<span class="status-pill blocked">Bloqueado</span>{% elif driver_history.suggest_block %}<span class="status-pill warning">Bloqueio recomendado</span>{% endif %}
+  </div>
+  {% if driver_history.state and driver_history.state.tratativas %}
+  <div class="treatment-history"><h3>Últimas tratativas</h3>{% for item in driver_history.state.tratativas[:3] %}<div><strong>{{ item.tipo }}</strong><span>{{ item.descricao }}</span><small>{{ item.criado_em.strftime('%d/%m/%Y %H:%M') }} · {{ item.usuario.nome }}</small></div>{% endfor %}</div>
+  {% endif %}
+  <div class="driver-card-actions"><a class="btn small ghost" href="{{ url_for('driver_history.index', base_id=driver_history.base_id) }}">Abrir histórico completo</a></div>
+</article>
+{% endif %}
