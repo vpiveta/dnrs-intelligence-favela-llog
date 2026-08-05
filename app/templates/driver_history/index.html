@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% from '_operational_filters.html' import operational_fields %}
+{% block title %}Histórico de Motoristas · DNR Intelligence{% endblock %}
+{% block content %}
+<section class="command-heading">
+  <div><span class="eyebrow">ANÁLISE SEMANAL</span><h1>Histórico de Motoristas</h1><p>Comparativo de até cinco semanas, tratativas e controle de bloqueios.</p></div>
+  <form class="quick-filters advanced-filters" method="get">
+    {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('driver_history.index') }}">Limpar</a>
+    <small class="filter-help">Os filtros permanecem ativos ao navegar para as demais análises.</small>
+  </form>
+</section>
+<section class="panel driver-history-summary">
+  <div class="panel-head"><div><h2>Evolução semanal</h2><p>Os registros são deduplicados por base e TBR antes da contagem.</p></div><span class="badge">{{ rows|length }} motoristas</span></div>
+  {% if week_keys %}<div class="week-labels">{% for year, week in week_keys %}<span>S{{ '%02d'|format(week) }}<small>{{ year }}</small></span>{% endfor %}</div>{% endif %}
+</section>
+<section class="driver-history-grid">
+{% for row in rows %}
+<article class="panel driver-history-card severity-{% if row.latest >= 8 %}critical{% elif row.latest >= 5 %}high{% elif row.latest >= 3 %}medium{% else %}low{% endif %}">
+  <div class="driver-history-head">
+    <div><span class="badge">{{ row.base.codigo if row.base else 'BASE' }}</span><h2>{{ row.motorista }}</h2><p>{{ row.total }} DNR nas últimas {{ week_keys|length }} semanas</p></div>
+    <div class="trend trend-{{ row.trend|lower }}"><strong>{{ row.latest }}</strong><span>DNR atual</span><b>{% if row.delta > 0 %}▲ +{{ row.delta }}{% elif row.delta < 0 %}▼ {{ row.delta }}{% else %}● 0{% endif %}</b></div>
+  </div>
+  <div class="driver-week-series">
+    {% for value in row.values %}<div class="week-value intensity-{{ [value,9]|min }}"><strong>{{ value }}</strong><span>S{{ '%02d'|format(week_keys[loop.index0][1]) }}</span></div>{% endfor %}
+  </div>
+  <div class="driver-status-line">
+    <span class="status-pill {{ row.trend|lower }}">{% if row.trend=='ALTA' %}Crescimento{% elif row.trend=='QUEDA' %}Redução{% else %}Estável{% endif %}</span>
+    {% if row.state and row.state.bloqueado %}<span class="status-pill blocked">Bloqueado</span>{% elif row.suggest_block %}<span class="status-pill warning">Bloqueio recomendado</span>{% endif %}
+  </div>
+  <details class="driver-actions"><summary>Registrar tratativa</summary>
+    <form method="post" action="{{ url_for('driver_history.add_treatment') }}" class="form-grid one">
+      <input type="hidden" name="motorista" value="{{ row.motorista }}"><input type="hidden" name="base_id" value="{{ row.base_id }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+      {% if week_keys %}<input type="hidden" name="semana_numero" value="{{ week_keys[-1][1] }}"><input type="hidden" name="ano" value="{{ week_keys[-1][0] }}">{% endif %}
+      <label>Tipo<select name="tipo"><option>ORIENTACAO</option><option>FEEDBACK</option><option>RECICLAGEM</option><option>ADVERTENCIA</option><option>ACOMPANHAMENTO</option></select></label>
+      <label>Tratativa<textarea name="descricao" required placeholder="Descreva a conversa, orientação e plano de ação..."></textarea></label><button class="btn primary">Salvar tratativa</button>
+    </form>
+  </details>
+  <details class="driver-actions"><summary>Bloqueio e limite</summary>
+    <form method="post" action="{{ url_for('driver_history.toggle_block') }}" class="form-grid one">
+      <input type="hidden" name="motorista" value="{{ row.motorista }}"><input type="hidden" name="base_id" value="{{ row.base_id }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+      <label>Limite de DNR por semana<input type="number" min="1" name="limite_bloqueio" value="{{ row.threshold }}"></label><label>Motivo<input name="motivo" value="{{ row.state.motivo_bloqueio if row.state else '' }}"></label>
+      {% if row.state and row.state.bloqueado %}<button class="btn ghost" name="acao" value="desbloquear">Desbloquear motorista</button>{% else %}<button class="btn danger" name="acao" value="bloquear">Bloquear motorista</button>{% endif %}
+    </form>
+  </details>
+  {% if row.state and row.state.tratativas %}<div class="treatment-history"><h3>Últimas tratativas</h3>{% for item in row.state.tratativas[:3] %}<div><strong>{{ item.tipo }}</strong><span>{{ item.descricao }}</span><small>{{ item.criado_em.strftime('%d/%m/%Y %H:%M') }} · {{ item.usuario.nome }}</small></div>{% endfor %}</div>{% endif %}
+</article>
+{% else %}<section class="panel empty"><div>◎</div><h3>Sem histórico suficiente</h3><p>Importe semanas com motorista identificado para iniciar a comparação.</p></section>{% endfor %}
+</section>
+{% endblock %}

@@ -4,9 +4,9 @@
 {% block content %}
 <div class="page-heading command-heading">
   <div><span class="eyebrow">Fase 4</span><h1>Inteligência Operacional</h1><p>Reincidências, risco, eficiência dos procedimentos e comparação entre bases.</p></div>
-  <form id="operational-filter" class="quick-filters enterprise-filter-bar" method="get">
+  <form class="quick-filters enterprise-filter-bar" method="get">
     {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('intelligence.index') }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega e somente semanas/anos existentes no banco.</small>
   </form>
 </div>
@@ -36,7 +36,7 @@
 
 <div class="grid two">
 <section class="panel"><div class="panel-head"><div><h2>Motoristas com mais casos</h2><p>Concentração de DNR por motorista.</p></div></div><div class="ranking-list">{% for row in top_motoristas %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.login }} · {{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
-<section class="panel"><div class="panel-head"><div><h2>Produtos críticos</h2><p>Volume e valor acumulado por produto.</p></div></div><div class="ranking-list">{% for row in top_produtos %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
+<section class="panel"><div class="panel-head"><div><h2>Categorias críticas</h2><p>Volume e valor acumulado por categoria.</p></div></div><div class="ranking-list">{% for row in top_categorias %}<a class="ranking-row clickable" href="{{ url_for('cases.index', case_ids=row.case_ids|join(','), base_id=row.base_id, next=request.full_path) }}"><div><strong>{{ row.base }} · {{ row.nome }}</strong><span>{{ row.abertos }} em aberto</span></div><b>{{ row.total }}</b><small>R$ {{ '%.2f'|format(row.valor) }}</small></a>{% else %}<div class="empty">Sem dados suficientes.</div>{% endfor %}</div></section>
 </div>
 
 

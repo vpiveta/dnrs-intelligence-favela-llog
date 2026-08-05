@@ -143,6 +143,35 @@ class HistoricoCaso(TimestampMixin, db.Model):
     usuario = db.relationship("User", foreign_keys=[usuario_id])
 
 
+class MotoristaAcompanhamento(TimestampMixin, db.Model):
+    __tablename__ = "motoristas_acompanhamentos"
+    id = db.Column(db.Integer, primary_key=True)
+    motorista = db.Column(db.String(255), nullable=False, index=True)
+    motorista_chave = db.Column(db.String(255), nullable=False, index=True)
+    base_id = db.Column(db.Integer, db.ForeignKey("bases_operacionais.id"), nullable=False, index=True)
+    bloqueado = db.Column(db.Boolean, default=False, nullable=False)
+    limite_bloqueio = db.Column(db.Integer, default=8, nullable=False)
+    motivo_bloqueio = db.Column(db.Text)
+    bloqueado_em = db.Column(db.DateTime(timezone=True))
+    bloqueado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    base = db.relationship("BaseOperacional")
+    bloqueado_por = db.relationship("User", foreign_keys=[bloqueado_por_id])
+    __table_args__ = (db.UniqueConstraint("base_id", "motorista_chave", name="uq_acompanhamento_motorista_base"),)
+
+
+class TratativaMotorista(TimestampMixin, db.Model):
+    __tablename__ = "tratativas_motoristas"
+    id = db.Column(db.Integer, primary_key=True)
+    acompanhamento_id = db.Column(db.Integer, db.ForeignKey("motoristas_acompanhamentos.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    semana_numero = db.Column(db.Integer, index=True)
+    ano = db.Column(db.Integer, index=True)
+    tipo = db.Column(db.String(40), default="ORIENTACAO", nullable=False)
+    descricao = db.Column(db.Text, nullable=False)
+    acompanhamento = db.relationship("MotoristaAcompanhamento", backref=db.backref("tratativas", cascade="all, delete-orphan", order_by="TratativaMotorista.criado_em.desc()"))
+    usuario = db.relationship("User", foreign_keys=[usuario_id])
+
+
 class SchemaVersion(db.Model):
     __tablename__ = "schema_versions"
     id = db.Column(db.Integer, primary_key=True)

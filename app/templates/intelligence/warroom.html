@@ -8,9 +8,9 @@
     <h1>Sala de Guerra</h1>
     <p>Prioridades, crescimento, risco e recomendações para orientar a ação do gerente.</p>
   </div>
-  <form id="operational-filter" class="quick-filters enterprise-filter-bar" method="get">
+  <form class="quick-filters enterprise-filter-bar" method="get">
     {{ operational_fields(bases, base_id, data, semanas_disponiveis, semana, anos_disponiveis, ano_filtro, current_user.can_view_all_bases) }}
-    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('dashboard.clear_filters', next=request.path) }}">Limpar</a>
+    <button class="btn primary">Aplicar</button><a class="btn ghost" href="{{ url_for('warroom.index') }}">Limpar</a>
     <small class="filter-help">A consulta usa a data de entrega e somente semanas/anos existentes no banco.</small>
   </form>
 </div>
@@ -89,7 +89,7 @@
 <section class="panel">
   <div class="panel-head"><div><h2>Crescimento semanal</h2><p>Semana atual comparada aos sete dias anteriores.</p></div><span class="pill">Atual × anterior</span></div>
   <div class="trend-tabs">
-    {% for titulo, rows, tipo in [('Endereços',tendencias_endereco,'endereco'),('Motoristas',tendencias_motorista,'motorista'),('Logins',tendencias_login,'login'),('Produtos',tendencias_produto,'produto')] %}
+    {% for titulo, rows, tipo in [('Endereços',tendencias_endereco,'endereco'),('Motoristas',tendencias_motorista,'motorista'),('Logins',tendencias_login,'login'),('Categorias',tendencias_categoria,'categoria')] %}
     <div class="trend-column"><h3>{{ titulo }}</h3>
       {% for row in rows %}<a class="trend-row" href="{% if tipo == 'endereco' %}{{ url_for('geo.index', q=row.nome, next=request.full_path) }}{% elif tipo == 'motorista' %}{{ url_for('cases.index', motorista=row.nome) }}{% elif tipo == 'login' %}{{ url_for('cases.index', login=row.nome) }}{% else %}{{ url_for('cases.index', produto=row.nome) }}{% endif %}"><div><strong>{{ row.nome }}</strong><span>{{ row.atual }} atual · {{ row.anterior }} anterior</span></div><b class="{% if row.variacao > 0 %}trend-up{% elif row.variacao < 0 %}trend-down{% endif %}">{{ '%+d'|format(row.variacao) }}%</b></a>{% else %}<div class="muted">Sem comparação suficiente.</div>{% endfor %}
     </div>

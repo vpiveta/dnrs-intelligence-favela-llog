@@ -11,7 +11,8 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import critical_context, is_overdue, sla_date, value_risk_level, value_risk_reason
 from app.core.identity import client_address_key, normalize_address, normalize_text
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.deduplication import deduplicate_cases
 
 bp = Blueprint("warroom", __name__, url_prefix="/sala-de-guerra")
 
@@ -114,12 +115,12 @@ def _procedure_rows(casos: list[CasoDNR]):
 @bp.route("/")
 @login_required
 def index():
-    base_id = selected_filter_base_id()
+    base_id = request.args.get("base_id", type=int)
     periodo = "all"
     query = apply_date_filters(_scope(db.select(CasoDNR)))
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
-    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
+    casos = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all())
 
     # Reincidência confiável: cliente é avaliado junto ao endereço normalizado.
     cliente_endereco = Counter(client_address_key(c.cliente, c.endereco) for c in casos if _clean(c.cliente) and _clean(c.endereco))
@@ -154,7 +155,7 @@ def index():
     tendencias_endereco = _trend_rows(casos, "endereco", inicio_atual, inicio_anterior, fim_anterior)
     tendencias_motorista = _trend_rows(casos, "motorista", inicio_atual, inicio_anterior, fim_anterior)
     tendencias_login = _trend_rows(casos, "login_utilizado", inicio_atual, inicio_anterior, fim_anterior)
-    tendencias_produto = _trend_rows(casos, "produto", inicio_atual, inicio_anterior, fim_anterior)
+    tendencias_categoria = _trend_rows(casos, "categoria", inicio_atual, inicio_anterior, fim_anterior)
     procedimentos = _procedure_rows(casos)
 
     recurrence_map = {}
@@ -180,7 +181,7 @@ def index():
 
     alertas = []
     if criticos:
-        alertas.append({"tipo": "danger", "titulo": f"{len(criticos)} casos críticos", "texto": "Produtos de R$ 1.000,00 ou mais, conforme a faixa automática de risco financeiro.", "acao": "Abrir casos prioritários", "url": "cases.index", "params": "critico=1"})
+        alertas.append({"tipo": "danger", "titulo": f"{len(criticos)} casos críticos", "texto": "Casos de maior risco financeiro, consolidados pelas categorias críticas.", "acao": "Abrir casos prioritários", "url": "cases.index", "params": "critico=1"})
     if vencidos:
         alertas.append({"tipo": "danger", "titulo": f"{len(vencidos)} casos com SLA vencido", "texto": "Existem tratativas abertas há mais de 3 dias após o upload da planilha.", "acao": "Revisar responsáveis", "url": "cases.index", "params": "vencido=1"})
     if sem_procedimento:
@@ -226,18 +227,14 @@ def index():
         })
     base_rows.sort(key=lambda x: (x["abertos"], x["total"]), reverse=True)
 
-    template_context = date_filter_context()
-    template_context.update({
-        "total": len(casos), "criticos": len(criticos), "altos": len(altos),
-        "medios": len(medios), "baixos": len(baixos), "vencidos": len(vencidos),
-        "sem_procedimento": len(sem_procedimento), "aguardando": len(aguardando),
-        "valor_risco": valor_risco, "alertas": alertas,
-        "casos_prioritarios": scored[:12], "tendencias_endereco": tendencias_endereco,
-        "tendencias_motorista": tendencias_motorista, "tendencias_login": tendencias_login,
-        "tendencias_produto": tendencias_produto, "procedimentos": procedimentos,
-        "bases": bases, "base_rows": base_rows, "reincidentes": reincidentes,
-        "nomes_multiplos_enderecos": nomes_multiplos_enderecos[:10],
-        "periodo": periodo, "critical_context": critical,
-        "priority_urls": priority_urls, "active_filters": active_filter_params(),
-    })
-    return render_template("intelligence/warroom.html", **template_context)
+    return render_template(
+        "intelligence/warroom.html",
+        total=len(casos), criticos=len(criticos), altos=len(altos), medios=len(medios), baixos=len(baixos), vencidos=len(vencidos),
+        sem_procedimento=len(sem_procedimento), aguardando=len(aguardando),
+        valor_risco=valor_risco, alertas=alertas, casos_prioritarios=scored[:12],
+        tendencias_endereco=tendencias_endereco, tendencias_motorista=tendencias_motorista,
+        tendencias_login=tendencias_login, tendencias_categoria=tendencias_categoria,
+        procedimentos=procedimentos, bases=bases, base_rows=base_rows,
+        reincidentes=reincidentes, nomes_multiplos_enderecos=nomes_multiplos_enderecos[:10],
+        periodo=periodo, base_id=base_id, critical_context=critical, priority_urls=priority_urls, active_filters=active_filter_params(), **date_filter_context(),
+    )

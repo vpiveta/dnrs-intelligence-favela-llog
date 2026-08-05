@@ -11,7 +11,8 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import is_overdue, value_risk_level
 from app.core.identity import abbreviate_person
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.deduplication import deduplicate_cases
 
 bp = Blueprint("analytics", __name__, url_prefix="/analytics")
 CONCLUIDOS = {"RESOLVIDO", "ENCERRADO", "CONCLUIDO"}
@@ -160,11 +161,11 @@ def _opportunities(casos, base_labels, consolidated):
 @login_required
 def index():
     periodo = "all"
-    base_id = selected_filter_base_id()
+    base_id = request.args.get("base_id", type=int)
     query = apply_date_filters(_visible_query())
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
-    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.asc())).all()
+    casos = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.criado_em.asc())).all())
 
     bases = db.session.scalars(
         db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)
@@ -280,17 +281,12 @@ def index():
         },
     }
 
-    template_context = date_filter_context()
-    template_context.update({
-        "bases": bases, "periodo": periodo,
-        "total": total, "resolvidos": resolvidos,
-        "taxa": round(resolvidos / total * 100) if total else 0,
-        "criticos": risk_counts["CRITICO"], "altos": risk_counts["ALTO"],
-        "medios": risk_counts["MEDIO"], "baixos": risk_counts["BAIXO"],
-        "vencidos": len(overdue_cases), "valor_total": valor_total,
-        "cep4_critico": cep4_critico, "chart_data": chart_data,
-        "base_rows": base_rows, "comparison": comparison[:30],
-        "period_info": period_info, "opportunities": opportunities,
-        "consolidated": consolidated, "active_filters": active_filter_params(),
-    })
-    return render_template("analytics/index.html", **template_context)
+    return render_template(
+        "analytics/index.html", bases=bases, base_id=base_id, periodo=periodo,
+        total=total, resolvidos=resolvidos, taxa=round(resolvidos / total * 100) if total else 0,
+        criticos=risk_counts["CRITICO"], altos=risk_counts["ALTO"], medios=risk_counts["MEDIO"], baixos=risk_counts["BAIXO"],
+        vencidos=len(overdue_cases), valor_total=valor_total, cep4_critico=cep4_critico,
+        chart_data=chart_data, base_rows=base_rows,
+        comparison=comparison[:30], period_info=period_info, opportunities=opportunities,
+        consolidated=consolidated, active_filters=active_filter_params(), **date_filter_context(),
+    )

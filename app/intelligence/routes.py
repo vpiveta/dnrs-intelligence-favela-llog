@@ -11,7 +11,8 @@ from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.operational_rules import value_risk_level
 from app.core.identity import client_address_key, normalize_address, normalize_text
-from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params, selected_filter_base_id
+from app.core.date_filters import apply_date_filters, date_filter_context, active_filter_params
+from app.core.deduplication import deduplicate_cases
 
 bp = Blueprint("intelligence", __name__, url_prefix="/inteligencia")
 
@@ -194,11 +195,11 @@ def _score(caso: CasoDNR, _client_count: Counter, _address_count: Counter) -> tu
 @login_required
 def index():
     periodo = "all"
-    base_id = selected_filter_base_id()
+    base_id = request.args.get("base_id", type=int)
     query = apply_date_filters(_scoped_query())
     if base_id and (current_user.can_view_all_bases):
         query = query.where(CasoDNR.base_id == base_id)
-    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
+    casos = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all())
 
     clientes = Counter((c.base_id, *client_address_key(c.cliente, c.endereco)) for c in casos if client_address_key(c.cliente, c.endereco)[0] and client_address_key(c.cliente, c.endereco)[1])
     enderecos = Counter((c.base_id, normalize_address(c.endereco)) for c in casos if normalize_address(c.endereco))
@@ -219,7 +220,7 @@ def index():
     top_clientes = _client_address_rows(casos)
     top_enderecos = _address_rows(casos)
     top_motoristas = _driver_login_rows(casos)
-    top_produtos = _group_rows(casos, "produto")
+    top_categorias = _group_rows(casos, "categoria")
     procedimentos = _procedure_rows(casos)
     faixas_horario, total_com_hora = _hour_rows(casos)
 
@@ -254,15 +255,13 @@ def index():
     if not insights:
         insights.append({"tipo": "info", "titulo": "Base em formação", "texto": "Ainda não há volume suficiente para recomendações conclusivas.", "acao": "Continue importando e tratando os casos."})
 
-    template_context = date_filter_context()
-    template_context.update({
-        "casos": scored[:12], "total": total, "taxa_resolucao": taxa_resolucao,
-        "reinc_clientes": reinc_clientes, "reinc_enderecos": reinc_enderecos,
-        "criticos": criticos, "valor_risco": valor_risco, "top_clientes": top_clientes,
-        "top_enderecos": top_enderecos, "top_motoristas": top_motoristas,
-        "top_produtos": top_produtos, "procedimentos": procedimentos,
-        "bases": bases, "base_stats": base_stats, "insights": insights,
-        "periodo": periodo, "faixas_horario": faixas_horario,
-        "total_com_hora": total_com_hora,
-    })
-    return render_template("intelligence/index.html", **template_context)
+    return render_template(
+        "intelligence/index.html",
+        casos=scored[:12], total=total, taxa_resolucao=taxa_resolucao,
+        reinc_clientes=reinc_clientes, reinc_enderecos=reinc_enderecos,
+        criticos=criticos, valor_risco=valor_risco, top_clientes=top_clientes,
+        top_enderecos=top_enderecos, top_motoristas=top_motoristas,
+        top_categorias=top_categorias, procedimentos=procedimentos,
+        bases=bases, base_stats=base_stats, insights=insights,
+        periodo=periodo, base_id=base_id, faixas_horario=faixas_horario, total_com_hora=total_com_hora, **date_filter_context(),
+    )

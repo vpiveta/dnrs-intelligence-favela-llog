@@ -18,7 +18,8 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import BaseOperacional, CasoDNR
 from app.core.identity import normalize_address
-from app.core.date_filters import apply_date_filters, date_filter_context, selected_filter_base_id
+from app.core.date_filters import apply_date_filters, date_filter_context
+from app.core.deduplication import deduplicate_cases
 
 bp = Blueprint("geo", __name__, url_prefix="/geo")
 
@@ -113,7 +114,7 @@ def _visible_query():
 
 def _apply_filters(query):
     query = apply_date_filters(query)
-    base_id = selected_filter_base_id()
+    base_id = request.args.get("base_id", type=int)
     motorista = request.args.get("motorista", "").strip()
     login = request.args.get("login", "").strip()
     produto = request.args.get("produto", "").strip()
@@ -146,7 +147,7 @@ def _apply_filters(query):
 @login_required
 def index():
     query = _apply_filters(_visible_query())
-    casos = db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all()
+    casos = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.criado_em.desc())).all())
     mapeados = [c for c in casos if c.latitude is not None and c.longitude is not None]
     exatos = [c for c in mapeados if (c.geocode_status or "") not in {"CEP_APROXIMADO", "CEP4_APROXIMADO"}]
     aproximados = [c for c in mapeados if (c.geocode_status or "") in {"CEP_APROXIMADO", "CEP4_APROXIMADO"}]
