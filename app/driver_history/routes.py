@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
@@ -23,6 +23,19 @@ def _scope(query):
     if not current_user.can_view_all_bases:
         query = query.where(CasoDNR.base_id == current_user.base_id)
     return query
+
+
+
+def _ensure_history_tables() -> bool:
+    """Garante as tabelas do módulo em bancos existentes sem apagar dados."""
+    try:
+        MotoristaAcompanhamento.__table__.create(bind=db.engine, checkfirst=True)
+        TratativaMotorista.__table__.create(bind=db.engine, checkfirst=True)
+        return True
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao preparar tabelas do histórico de motoristas")
+        return False
 
 
 def _get_or_create(driver: str, base_id: int) -> MotoristaAcompanhamento:
@@ -45,55 +58,101 @@ def _get_or_create(driver: str, base_id: int) -> MotoristaAcompanhamento:
 @bp.route("/", methods=["GET"])
 @login_required
 def index():
+    # Bancos que já estavam em produção antes deste módulo podem ainda não ter
+    # as tabelas de acompanhamento. A criação é idempotente e preserva dados.
+    history_ready = _ensure_history_tables()
+
     base_id = request.args.get("base_id", type=int)
     query = apply_date_filters(_scope(db.select(CasoDNR)))
     if base_id and current_user.can_view_all_bases:
         query = query.where(CasoDNR.base_id == base_id)
-    cases = deduplicate_cases(db.session.scalars(query.order_by(CasoDNR.ano.desc(), CasoDNR.semana_numero.desc())).all())
 
-    all_week_keys = sorted({(int(c.ano or datetime.now().year), int(c.semana_numero)) for c in cases if c.semana_numero})
+    cases = deduplicate_cases(
+        db.session.scalars(
+            query.order_by(
+                CasoDNR.ano.asc(),
+                CasoDNR.semana_numero.asc(),
+                CasoDNR.atualizado_em.asc(),
+            )
+        ).all()
+    )
+
+    all_week_keys = sorted({
+        (int(c.ano or datetime.now().year), int(c.semana_numero))
+        for c in cases
+        if c.semana_numero
+    })
     week_keys = all_week_keys[-5:]
-    grouped = defaultdict(lambda: Counter())
-    labels = {}
-    bases_by_id = {}
-    for c in cases:
-        if not c.motorista or not c.semana_numero:
-            continue
-        key = (c.base_id, _key(c.motorista))
-        wk = (int(c.ano or datetime.now().year), int(c.semana_numero))
-        if wk not in week_keys:
-            continue
-        grouped[key][wk] += 1
-        labels[key] = c.motorista.strip()
-        bases_by_id[c.base_id] = c.base
+    grouped = defaultdict(Counter)
+    labels: dict[tuple[int, str], str] = {}
+    base_codes: dict[int, str] = {}
 
-    existing = db.session.scalars(db.select(MotoristaAcompanhamento)).all()
-    state_map = {(x.base_id, x.motorista_chave): x for x in existing}
+    for case in cases:
+        if not case.motorista or not case.semana_numero:
+            continue
+        identity = (case.base_id, _key(case.motorista))
+        week_key = (int(case.ano or datetime.now().year), int(case.semana_numero))
+        if week_key not in week_keys:
+            continue
+        grouped[identity][week_key] += 1
+        labels[identity] = case.motorista.strip()
+        base_codes[case.base_id] = case.base.codigo if case.base else "BASE"
+
+    state_map = {}
+    if history_ready:
+        try:
+            state_query = db.select(MotoristaAcompanhamento)
+            visible_base_ids = {identity[0] for identity in grouped}
+            if visible_base_ids:
+                state_query = state_query.where(MotoristaAcompanhamento.base_id.in_(visible_base_ids))
+            existing = db.session.scalars(state_query).unique().all()
+            state_map = {(item.base_id, item.motorista_chave): item for item in existing}
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Falha ao carregar acompanhamentos de motoristas")
+            history_ready = False
+
     rows = []
     for identity, counts in grouped.items():
-        base_key, driver_key = identity
-        values = [counts.get(w, 0) for w in week_keys]
+        current_base_id, driver_key = identity
+        values = [counts.get(week_key, 0) for week_key in week_keys]
         latest = values[-1] if values else 0
         previous = values[-2] if len(values) > 1 else 0
         delta = latest - previous
         trend = "ALTA" if delta > 0 else "QUEDA" if delta < 0 else "ESTAVEL"
         state = state_map.get(identity)
-        threshold = state.limite_bloqueio if state else 8
+        threshold = int(state.limite_bloqueio if state else 8)
         rows.append({
-            "motorista": labels[identity], "motorista_chave": driver_key,
-            "base": bases_by_id.get(base_key), "base_id": base_key,
-            "values": values, "total": sum(values), "latest": latest, "previous": previous,
-            "delta": delta, "trend": trend, "state": state, "threshold": threshold,
+            "motorista": labels[identity],
+            "motorista_chave": driver_key,
+            "base_code": base_codes.get(current_base_id, "BASE"),
+            "base_id": current_base_id,
+            "values": values,
+            "total": sum(values),
+            "latest": latest,
+            "previous": previous,
+            "delta": delta,
+            "trend": trend,
+            "state": state,
+            "threshold": threshold,
             "suggest_block": latest >= threshold,
         })
-    rows.sort(key=lambda r: (r["latest"], r["total"]), reverse=True)
+    rows.sort(key=lambda row: (row["latest"], row["total"], row["motorista"]), reverse=True)
 
-    bases = db.session.scalars(db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)).all()
+    bases_query = db.select(BaseOperacional).where(BaseOperacional.ativa.is_(True)).order_by(BaseOperacional.codigo)
     if not current_user.can_view_all_bases:
-        bases = [current_user.base]
+        bases_query = bases_query.where(BaseOperacional.id == current_user.base_id)
+    bases = db.session.scalars(bases_query).all()
+
     return render_template(
-        "driver_history/index.html", rows=rows, week_keys=week_keys, bases=bases, base_id=base_id,
-        active_filters=active_filter_params(), **date_filter_context(),
+        "driver_history/index.html",
+        rows=rows,
+        week_keys=week_keys,
+        bases=bases,
+        base_id=base_id,
+        history_ready=history_ready,
+        active_filters=active_filter_params(),
+        **date_filter_context(),
     )
 
 

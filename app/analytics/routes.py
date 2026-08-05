@@ -197,7 +197,7 @@ def index():
         row = driver_grouped[label]
         row["total"] += 1; row["valor"] += Decimal(c.valor or 0); row["full"] = full; row["base_id"] = c.base_id
     motoristas = [{"nome": k, **v} for k,v in driver_grouped.items()]
-    motoristas.sort(key=lambda x:(x["total"],x["valor"]), reverse=True); motoristas=_top_with_others(motoristas, 12)
+    motoristas.sort(key=lambda x:(x["total"],x["valor"]), reverse=True); motoristas=motoristas[:5]
     logins = _top_identified(casos, "login_utilizado", base_labels, consolidated, 20)
     categorias = _top_identified(casos, "categoria", base_labels, consolidated, 20)
     cep4_rows = _top_identified(casos, "cep4", base_labels, consolidated, 30)
@@ -263,7 +263,6 @@ def index():
         "mes": por_mes,
         "horario": [{"label": x["nome"], "value": x["total"]} for x in por_horario],
         "motorista": [{"label": x["nome"], "value": x["total"], "filter": x.get("full", ""), "base_id": x.get("base_id")} for x in motoristas],
-        "login": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.login_utilizado)==x["nome"].split(" · ",1)[-1]), None)} for x in logins],
         "categoria": [{"label": x["nome"], "value": x["total"], "filter": x["nome"].split(" · ",1)[-1], "base_id": next((c.base_id for c in casos if _label(c.categoria)==x["nome"].split(" · ",1)[-1]), None)} for x in categorias],
         "cep4": [{"label": x["nome"], "value": x["total"]} for x in cep4_rows if x["nome"] != "Não informado"],
         "base": [{"label": x["nome"], "value": x["total"]} for x in base_rows],

@@ -80,7 +80,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
-        response.headers["X-DNR-Intelligence-Version"] = "1.0.0-enterprise"
+        response.headers["X-DNR-Intelligence-Version"] = "2.1.1-enterprise"
         return response
 
     @app.get("/health")
